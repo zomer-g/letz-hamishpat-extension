@@ -1,0 +1,10 @@
+# build artifacts — the store zip is produced by `npm run build`
+dist/
+
+# dependencies
+node_modules/
+
+# local noise
+*.log
+.DS_Store
+Thumbs.db

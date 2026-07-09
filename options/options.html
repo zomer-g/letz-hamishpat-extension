@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>הגדרות — לץ המשפט</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header class="cdo-header">
+    <span class="cdo-logo">נ</span>
+    <h1>לץ המשפט</h1>
+  </header>
+
+  <nav class="cdo-tabs" role="tablist">
+    <button type="button" class="cdo-tab cdo-tab--active" id="tab-documents" data-profile="documents">מסמכים והחלטות</button>
+    <button type="button" class="cdo-tab" id="tab-hearings" data-profile="hearings">דיונים</button>
+    <button type="button" class="cdo-tab" id="tab-calendar">יומן Google</button>
+  </nav>
+
+  <main class="cdo-main">
+   <section class="cdo-card" id="appearance-card">
+     <h2>מראה</h2>
+     <label class="cdo-check"><input type="checkbox" id="ui-clownhat"> <span>הצג כובע ליצן על הלוגו</span></label>
+     <label class="cdo-field">מיקום כלי התוסף
+       <select id="ui-mode">
+         <option value="inline">מוטמע בתוך העמוד (ברירת מחדל)</option>
+         <option value="floating">חלון צף מעל העמוד</option>
+       </select>
+     </label>
+     <p class="cdo-hint">ב"חלון צף" — הפאנלים (הורדת מסמכים / ייצוא דיונים) מופיעים בחלון גרר אחד מעל העמוד, שמתאים את תוכנו לפיצ׳רים של העמוד הנוכחי. השינוי חל בטעינת העמוד הבאה.</p>
+   </section>
+
+   <div id="view-profile">
+    <p class="cdo-profile-note" id="profile-note">ההגדרות הבאות חלות על <b>הורדת מסמכים והחלטות</b>.</p>
+    <section class="cdo-card">
+      <h2>יעדי הורדה</h2>
+      <p class="cdo-hint">בחר לאן יישלחו הקבצים שתבחר. אפשר לסמן יותר מאחד.</p>
+      <label class="cdo-check"><input type="checkbox" id="dest-local"> <span>הורדה למחשב (ZIP + אינדקס)</span></label>
+      <label class="cdo-check" style="display:none"><input type="checkbox" id="dest-server"> <span>שליחה לשרת (API)</span></label>
+      <label class="cdo-check"><input type="checkbox" id="dest-drive"> <span>העלאה ל־Google Drive</span></label>
+    </section>
+
+    <section class="cdo-card" id="server-card" style="display:none">
+      <h2>שרת API</h2>
+      <p class="cdo-hint">כל מסמך יישלח כ־<code>multipart/form-data</code> (POST) לכתובת שתגדיר, עם כותרת <code>X-API-Key</code>. ראה <code>SETUP.md</code> למבנה הבקשה.</p>
+      <label class="cdo-field">כתובת ה־endpoint
+        <input type="url" id="server-endpoint" placeholder="https://your-server.example.com/api/v1/intake">
+      </label>
+      <label class="cdo-field">מפתח API (X-API-Key)
+        <input type="password" id="server-apikey" placeholder="••••••••" autocomplete="off">
+      </label>
+      <button class="cdo-btn" id="server-test">בדיקת חיבור</button>
+      <span class="cdo-status" id="server-status"></span>
+    </section>
+
+    <section class="cdo-card" id="drive-card">
+      <h2>Google Drive</h2>
+      <p class="cdo-hint">התחבר עם חשבון Google. הקבצים יועלו לתיקייה ייעודית בשם <b>מסמכי נט המשפט</b> שתיווצר אוטומטית ב-My Drive. ראה <code>SETUP.md</code> להגדרת ה־OAuth client ב־Google Cloud.</p>
+      <div class="cdo-row">
+        <button class="cdo-btn" id="drive-connect">התחבר ל־Google</button>
+        <button class="cdo-btn" id="drive-disconnect" type="button">נתק חשבון</button>
+        <span class="cdo-status" id="drive-account"></span>
+      </div>
+
+      <div class="cdo-row" style="margin-top:8px">
+        <span>תיקיית יעד:</span> <b id="drive-target-name">מסמכי נט המשפט</b>
+      </div>
+
+      <details class="cdo-advanced" id="drive-advanced" style="margin-top:10px">
+        <summary style="cursor:pointer;font-weight:bold">אפשרויות מתקדמות — בחירת תיקייה מותאמת</summary>
+        <p class="cdo-hint" style="margin-top:8px">
+          ברירת המחדל היא תיקייה ייעודית בשורש Drive. אם תרצה לבחור תיקייה אחרת מהקיימות אצלך,
+          יש ללחוץ כאן ולאשר הרשאה נוספת לקריאת שמות תיקיות.
+          <br>
+          <b>שים לב:</b> מאחר שההרשאה הזו עדיין בתהליך אימות אצל Google, יוצג מסך אזהרה
+          ("Google hasn't verified this app"). כדי להמשיך, יש ללחוץ על "Advanced" ואז על הקישור להמשך.
+        </p>
+        <div class="cdo-row">
+          <button class="cdo-btn" id="drive-browse" type="button">אפשר בחירת תיקייה מותאמת</button>
+          <span class="cdo-status" id="drive-advanced-status"></span>
+        </div>
+      </details>
+
+      <div id="drive-browser" class="cdo-browser" hidden>
+        <p class="cdo-hint">נווט לתיקייה הרצויה ולחץ "בחר". אפשר גם ליצור תיקייה חדשה במיקום הנוכחי.</p>
+        <div class="cdo-bc" id="drive-bc"></div>
+        <div class="cdo-row">
+          <button class="cdo-btn" id="drive-newfolder" type="button">➕ תיקייה חדשה כאן</button>
+        </div>
+        <div class="cdo-row" id="drive-new-row" hidden>
+          <input type="text" id="drive-new-name" placeholder="שם התיקייה החדשה" style="flex:1;padding:6px 8px;border:1px solid #9bc2e6">
+          <button class="cdo-btn" id="drive-new-create" type="button">צור</button>
+        </div>
+        <ul class="cdo-folders" id="drive-list"></ul>
+        <div class="cdo-row">
+          <button class="cdo-btn cdo-btn--primary" id="drive-pick" type="button">בחר תיקייה זו</button>
+          <button class="cdo-btn" id="drive-browse-close" type="button">ביטול</button>
+          <span class="cdo-status" id="drive-browse-status"></span>
+        </div>
+      </div>
+
+      <label class="cdo-check" id="drive-skip-row"><input type="checkbox" id="drive-skip"> <span>העלה רק קבצים חדשים — דלג על מסמכים שכבר קיימים בתיקייה (מניעת כפילויות)</span></label>
+    </section>
+
+    <div class="cdo-actions">
+      <button class="cdo-btn cdo-btn--primary" id="save">שמור הגדרות</button>
+      <span class="cdo-status" id="save-status"></span>
+    </div>
+   </div><!-- /view-profile -->
+
+   <div id="view-calendar" hidden>
+    <p class="cdo-profile-note">סנכרון <b>יומן הדיונים שלך</b> ל-Google Calendar. הכפתור "🔄 סנכרן יומן ל-Google" מופיע בראש כל עמוד בנט המשפט.</p>
+
+    <section class="cdo-card">
+      <h2>חיבור Google Calendar</h2>
+      <p class="cdo-hint">התחבר וטען את היומנים (השכבות) שלך. דרוש שה-Calendar API יהיה מופעל בפרויקט ה-Google Cloud של ה-OAuth client (ראה <code>SETUP.md</code>).</p>
+      <div class="cdo-row">
+        <button class="cdo-btn" id="cal-connect" type="button">התחבר וטען יומנים</button>
+        <span class="cdo-status" id="cal-connect-status"></span>
+      </div>
+      <label class="cdo-field">השכבה (היומן) שאליה יסונכרנו הדיונים
+        <select id="cal-select" style="display:block;width:100%;margin-top:5px;padding:7px 9px;border:1px solid #9bc2e6"></select>
+      </label>
+      <div class="cdo-row">
+        <button class="cdo-btn" id="cal-newcal" type="button">➕ צור יומן חדש</button>
+        <span class="cdo-status" id="cal-pick-status"></span>
+      </div>
+    </section>
+
+    <section class="cdo-card">
+      <h2>טווח הסנכרון</h2>
+      <p class="cdo-hint">בכל סנכרון נאספים הדיונים מהיום והלאה, למספר החודשים שתגדיר.</p>
+      <label class="cdo-field">מספר חודשים קדימה
+        <input type="number" id="cal-months" min="1" max="36" step="1" style="display:block;width:120px;margin-top:5px;padding:7px 9px;border:1px solid #9bc2e6">
+      </label>
+    </section>
+
+    <section class="cdo-card">
+      <h2>מבנה האירוע ביומן</h2>
+      <p class="cdo-hint">השתמש בשדות בסוגריים מסולסלים. זמינים:
+        <code>{caseId}</code> <code>{caseName}</code> <code>{court}</code> <code>{judge}</code>
+        <code>{sittingType}</code> <code>{proceeding}</code> <code>{status}</code>
+        <code>{date}</code> <code>{time}</code> <code>{externalCase}</code>.</p>
+      <label class="cdo-field">כותרת האירוע
+        <input type="text" id="cal-tpl-title" placeholder="{caseId} {caseName}">
+      </label>
+      <label class="cdo-field">מיקום
+        <input type="text" id="cal-tpl-location" placeholder="{court}">
+      </label>
+      <label class="cdo-field">תיאור
+        <input type="text" id="cal-tpl-desc" placeholder="שופט: {judge}">
+      </label>
+    </section>
+
+    <div class="cdo-actions">
+      <button class="cdo-btn cdo-btn--primary" id="cal-save" type="button">שמור הגדרות יומן</button>
+      <span class="cdo-status" id="cal-save-status"></span>
+    </div>
+   </div><!-- /view-calendar -->
+  </main>
+
+  <script src="../shared/settings.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{
+  "extension_name": {
+    "message": "לץ המשפט",
+    "description": "Extension display name"
+  },
+  "extension_description": {
+    "message": "הורדה ושמירה של מסמכים ודיונים מתיקים בנט המשפט — לקובץ אחד עם אינדקס ו/או ל-Google Drive.",
+    "description": "Short description shown in CWS and chrome://extensions"
+  },
+  "toolbar_select_page": {
+    "message": "סמן הכל בעמוד זה"
+  },
+  "toolbar_select_all": {
+    "message": "סמן הכל בכל העמודים"
+  },
+  "toolbar_clear": {
+    "message": "נקה בחירה"
+  },
+  "toolbar_download": {
+    "message": "הורד נבחרים"
+  },
+  "status_idle": {
+    "message": "ממתין לבחירה"
+  },
+  "status_paginating": {
+    "message": "טוען עמודים נוספים…"
+  },
+  "status_downloading": {
+    "message": "מוריד $DONE$ מתוך $TOTAL$",
+    "placeholders": {
+      "done": { "content": "$1" },
+      "total": { "content": "$2" }
+    }
+  },
+  "status_zipping": {
+    "message": "אורז ZIP…"
+  },
+  "status_done": {
+    "message": "הסתיים. הורד $N$ קבצים.",
+    "placeholders": {
+      "n": { "content": "$1" }
+    }
+  },
+  "status_session_expired": {
+    "message": "פג תוקף הסשן. התחבר מחדש לנט המשפט ונסה שוב."
+  },
+  "error_not_on_doc_list": {
+    "message": "התוסף פעיל רק בעמוד רשימת מסמכים."
+  }
+}

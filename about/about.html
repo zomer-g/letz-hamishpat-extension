@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>אודות — לץ המשפט</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, "Arial Hebrew", sans-serif; color: #333366; background: #eef4fb; }
+    .ab-header { display: flex; align-items: center; gap: 14px; padding: 18px 24px;
+      background-image: linear-gradient(to bottom, #5fa0dd 0%, #2e6da4 100%); color: #fff; border-bottom: 2px solid #244669; }
+    .ab-logo { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+      background: #fff; color: #2e6da4; font-weight: 700; font-size: 26px; border-radius: 4px; }
+    .ab-header h1 { margin: 0; font-size: 20px; }
+    .ab-header .ver { font-size: 12px; opacity: 0.9; }
+    main { max-width: 720px; margin: 20px auto; padding: 0 18px; line-height: 1.7; }
+    .card { background: #fff; border: 1px solid #244669; padding: 16px 20px; margin-bottom: 16px; }
+    h2 { font-size: 16px; color: #244669; border-bottom: 1px solid #9bc2e6; padding-bottom: 6px; margin-top: 0; }
+    ul { padding-inline-start: 20px; }
+    li { margin: 5px 0; }
+    code { background: #eef4fb; padding: 1px 5px; border-radius: 2px; font-size: 13px; }
+    a { color: #2e6da4; }
+    .muted { color: #5a6a85; font-size: 13px; }
+    .ok { color: #1c7a32; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header class="ab-header">
+    <span class="ab-logo">נ</span>
+    <div>
+      <h1>לץ המשפט</h1>
+      <div class="ver" id="ver">גרסה …</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>מה התוסף עושה</h2>
+      <p>התוסף מאפשר לעורך/ת דין המחובר/ת לנט המשפט לבחור מספר מסמכים מתיקייה בתיק (החלטות, בקשות, כתבי טענות, תצהירים, פסקי דין, פרוטוקולים, תיק נייר ועוד) ולהוריד את כולם בבת אחת — כקובץ ZIP יחיד עם אינדקס, ו/או להעלות ל־Google Drive.</p>
+      <p>כל מסמך מורד כ־PDF הבנוי מעמודי המסמך, ישירות מתוך הסשן המאומת שלך — בלי לעקוף שום הזדהות.</p>
+    </section>
+
+    <section class="card">
+      <h2>איך משתמשים</h2>
+      <ul>
+        <li>היכנס/י לתיק בנט המשפט ופתח/י תיקיית מסמכים (למשל "החלטות בתיק").</li>
+        <li>פס כחול "📥 הורדת מסמכים" יופיע מעל הטבלה.</li>
+        <li>סמן/י מסמכים (או "סמן הכל") ולחץ/י "הורד".</li>
+        <li>בתיקים גדולים ההורדה מתפצלת אוטומטית לכמה קבצי ZIP, וניתן לבטל באמצע. אם הסשן פג — התחבר/י מחדש ולחץ/י "הורד" שוב כדי להמשיך מאותה נקודה.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>פרטיות</h2>
+      <p>כל העיבוד מתבצע במחשב שלך. התוסף <b>אינו</b> שולח את המסמכים לאף שרת חיצוני — אלא אם בחרת בעצמך להעלות אותם ל־Google Drive. אין אנליטיקס, אין מעקב, ואין איסוף מידע אישי.</p>
+      <p class="muted">
+        <a id="home" href="#" target="_blank" rel="noopener">דף הבית</a> ·
+        <a id="privacy" href="#" target="_blank" rel="noopener">מדיניות פרטיות</a> ·
+        <a id="terms" href="#" target="_blank" rel="noopener">תנאי שימוש</a>
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>יעדים מתקדמים</h2>
+      <ul>
+        <li><b>Google Drive:</b> העלאה לתיקייה לפי הרשאת <code>drive.file</code> (התוסף רואה רק קבצים שהוא יצר).</li>
+      </ul>
+      <p class="muted">מזהה התוסף (להגדרת OAuth client ב־Google Cloud): <code id="extid">…</code></p>
+    </section>
+
+    <p class="muted">פותח עבור עו"ד גיא זומר · מבוסס על פרויקט court_downloader.</p>
+  </main>
+
+  <script src="about.js"></script>
+</body>
+</html>
