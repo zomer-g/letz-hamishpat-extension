@@ -4,9 +4,12 @@
 
 > 🛒 [להתקנה מחנות Chrome](https://chromewebstore.google.com/) · 🌐 [עמוד התוסף](https://www.z-g.co.il/court-downloader) · 🔒 [מדיניות פרטיות](https://www.z-g.co.il/court-downloader/privacy)
 
+![לץ המשפט](docs/screenshots/hero.png)
+
 | | |
 |---|---|
-| ![מסמכים](docs/screenshots/screenshot-documents.png) | ![יומן שופט](docs/screenshots/screenshot-judge.png) |
+| ![הורדת מסמכים](docs/screenshots/documents.png) | ![יומן שופט](docs/screenshots/judge.png) |
+| ![איתור תיק ומועדפים](docs/screenshots/locate.png) | ![ייצוא יומן דיונים](docs/screenshots/hearings.png) |
 
 ## מה התוסף עושה
 
