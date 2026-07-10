@@ -1,6 +1,6 @@
 {
   "name": "letz-hamishpat-extension",
-  "version": "0.18.36",
+  "version": "0.18.37",
   "description": "לץ המשפט — Chrome extension for Israel's Net HaMishpat court portal: bulk document download, hearing/judge calendars, quick case locate, favorites",
   "main": "build-zip.js",
   "private": true,
