@@ -9,7 +9,6 @@
 |---|---|---|---|
 | **Chrome / Edge** | **0.18.37** | [`chrome/`](chrome/) | פורסם ב-Chrome Web Store |
 | **Firefox** | **0.17.15** | [`firefox/`](firefox/) | מוכן להגשה ל-AMO — [מדריך](docs/firefox-amo/AMO_PUBLISH_GUIDE.md) |
-| Chrome (Lite) | 1.0.0 | [`chrome-lite/`](chrome-lite/) | ארכיון — לא מתוחזק, לא פורסם |
 
 > **פער הגרסאות בין הדפדפנים הוא מכוון וידוע.** פורט הפיירפוקס נעשה בגרסה 0.17.15
 > וטרם עודכן לפיצ'רים של 0.18.x (יומן שופט/ת, איתור תיק מהיר, תיקים מועדפים).
@@ -81,14 +80,6 @@
 - **OAuth שונה מכרום**: `identity.launchWebAuthFlow` במקום `getAuthToken`, ולכן
   נדרש Google OAuth Client מסוג *Web application* — ראה
   [SETUP_FIREFOX.md](docs/firefox-amo/SETUP_FIREFOX.md).
-
----
-
-## Chrome Lite (ארכיון)
-
-### 1.0.0 — 2026-06-04
-וריאנט מצומצם: הורדת מסמכים ל-ZIP מקומי בלבד, ללא דיונים/יומן/Drive/הגדרות.
-נבנה כגיבוי פשוט, מעולם לא פורסם ולא עודכן מאז. נשמר לתיעוד בלבד.
 
 ---
 

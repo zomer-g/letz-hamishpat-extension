@@ -18,7 +18,6 @@ more — if you find a copy there, it is stale; delete it rather than edit it.
 |---|---|---|
 | `chrome/` | Chrome/Edge extension — **the lead build**, gets features first | 0.18.37 |
 | `firefox/` | Firefox/AMO port — separate tree, lags the Chrome feature set | 0.17.15 |
-| `chrome-lite/` | Archived stripped-down variant; unmaintained, never published | 1.0.0 |
 | `docs/` | `screenshots/`, `chrome-web-store/`, `firefox-amo/`, `testing/`, `site/` |
 
 `CHANGELOG.md` at the repo root is the single version history for both browsers —
