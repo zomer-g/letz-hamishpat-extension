@@ -11,7 +11,7 @@ You only need to do this once.
 ## 1. Get the Firefox redirect URI for this extension
 
 1. Open Firefox → `about:debugging#/runtime/this-firefox`.
-2. **Load Temporary Add-on…** → pick `firefox/manifest.json`.
+2. **Load Temporary Add-on…** → pick `src/dist/firefox/manifest.json` (הרץ תחילה `npm run build:firefox`).
 3. Click the extension's **Inspect** button to open its service-worker
    console.
 4. In the console, run:
@@ -42,7 +42,7 @@ You only need to do this once.
 
 ## 3. Wire the client ID into the extension
 
-Open `firefox/background/service-worker.js` and replace the
+Open `src/background/service-worker.js` and replace the
 placeholder:
 
 ```js
@@ -74,16 +74,16 @@ text and [AMO_LISTING.md](AMO_LISTING.md) for the public listing copy.
 Build the submission ZIP:
 
 ```bash
-cd firefox
-node build-zip.js
+cd src
+npm run build:firefox
 # → dist/firefox-extension-v{version}.zip
 ```
 
 Optional pre-submission validation:
 
 ```bash
-npx web-ext lint --source-dir firefox/
-npx web-ext build --source-dir firefox/
+npx web-ext lint --source-dir src/dist/firefox
+npx web-ext build --source-dir src/dist/firefox
 ```
 
 Upload at https://addons.mozilla.org/developers/ → **Submit a New Add-on**

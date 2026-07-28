@@ -5,14 +5,13 @@
 
 ## מצב נוכחי
 
-| דפדפן | גרסה | תיקייה | סטטוס |
-|---|---|---|---|
-| **Chrome / Edge** | **0.18.37** | [`chrome/`](chrome/) | פורסם ב-Chrome Web Store |
-| **Firefox** | **0.17.15** | [`firefox/`](firefox/) | מוכן להגשה ל-AMO — [מדריך](docs/firefox-amo/AMO_PUBLISH_GUIDE.md) |
+| דפדפן | גרסה | סטטוס |
+|---|---|---|
+| **Chrome / Edge** | **0.18.37** | פורסם ב-Chrome Web Store |
+| **Firefox** | **0.18.37** | מוכן להגשה ל-AMO — [מדריך](docs/firefox-amo/AMO_PUBLISH_GUIDE.md) |
 
-> **פער הגרסאות בין הדפדפנים הוא מכוון וידוע.** פורט הפיירפוקס נעשה בגרסה 0.17.15
-> וטרם עודכן לפיצ'רים של 0.18.x (יומן שופט/ת, איתור תיק מהיר, תיקים מועדפים).
-> ראה [ROADMAP](#roadmap) בהמשך.
+**שני הדפדפנים נבנים מעץ מקור אחד (`src/`) ותמיד באותה גרסה.** אין יותר פער
+פיצ'רים ביניהם: `npm run build:all` מפיק את שתי החבילות מאותו קוד.
 
 ---
 
@@ -67,25 +66,38 @@
 
 ## Firefox
 
-### 0.17.15 — 2026-07-27 (מוכן להגשה)
+### 0.18.37 — 2026-07-28 · **איחוד עצי הקוד**
+פיירפוקס קפץ מ-0.17.15 ל-0.18.37 ומקבל את מלוא הפיצ'רים של הכרום — יומן שופט/ת,
+איתור תיק מהיר, תיקים מועדפים, החלונית הצפה, וכל תיקוני הבאגים של 0.18.x:
+- עץ הפיירפוקס הנפרד נמחק; שני הדפדפנים נבנים מ-`src/` באמצעות
+  `build-zip.js --target=firefox`, שממיר את המניפסט בלבד (event page,
+  `browser_specific_settings.gecko`, הסרת `oauth2`).
+- שים תאימות `chrome`↔`browser` (`shared/browser-compat.js`) נטען ראשון בכל הקשר.
+- ה-OAuth אוחד למימוש אחד שבוחר בזמן ריצה לפי יכולת הדפדפן: `getAuthToken`
+  בכרום, `launchWebAuthFlow` בפיירפוקס (עם מטמון טוקנים ב-`storage.session`).
+- חוזה הבנייה הדו-יעדית מקובע ב-`tests/dual-build.test.js` (סה"כ 289 בדיקות).
+- `web-ext lint`: 0 שגיאות.
+
+### 0.17.15 — 2026-07-27 (העץ הנפרד, לפני האיחוד)
 - הצהרת **`data_collection_permissions: {required:["none"]}`** — דרישת חובה של מוזילה
   לכל הגשה חדשה מאז 2025-11-03.
-- `strict_min_version` הועלה ל-140 (הגרסה שתומכת בהצהרה; ESR נוכחי).
-- `web-ext lint`: 0 שגיאות.
+- `strict_min_version` הועלה ל-140; `web-ext lint`: 0 שגיאות.
 - נוסף [מדריך העלאה מלא בעברית](docs/firefox-amo/AMO_PUBLISH_GUIDE.md).
 
 ### 0.17.15 — 2026-06-09 (הפורט הראשוני)
-- פורט מגרסת הכרום 0.17.15: background הומר מ-service worker ל-event page,
-  שים תאימות `chrome`↔`browser`, מזהה קבוע `court-downloader@z-g.co.il`.
-- **OAuth שונה מכרום**: `identity.launchWebAuthFlow` במקום `getAuthToken`, ולכן
-  נדרש Google OAuth Client מסוג *Web application* — ראה
-  [SETUP_FIREFOX.md](docs/firefox-amo/SETUP_FIREFOX.md).
+- פורט מגרסת הכרום 0.17.15 לעץ נפרד: background הומר ל-event page, מזהה קבוע
+  `court-downloader@z-g.co.il`, ו-OAuth דרך `identity.launchWebAuthFlow` —
+  ראה [SETUP_FIREFOX.md](docs/firefox-amo/SETUP_FIREFOX.md).
 
----
 
-## Roadmap
+## מדיניות שחרור
 
-- **השוואת פיירפוקס לכרום** — פורט הפיצ'רים של 0.18.x (יומן שופט, איתור תיק, מועדפים).
-- **איחוד עצי הקוד** — היעד: עץ מקור אחד עם בנייה per-target
-  (`build-zip.js --target=firefox`), כמו בתוסף האח "לץ הממשל", במקום שני עצים נפרדים.
-  כרגע העצים נפרדים כי הפורט נעשה בגרסה מוקדמת יותר ובעל מימוש OAuth שונה.
+**כל גרסה חדשה מיוצרת לשני הדפדפנים במקביל.** אין יותר "גרסת כרום" ו"גרסת
+פיירפוקס" נפרדות:
+
+1. מפתחים ב-`src/` בלבד.
+2. `npm test` — חייב להיות ירוק.
+3. `npm run build:all` — מפיק את שתי החבילות מאותה גרסה.
+4. בדיקה חיה בשני הדפדפנים, בשני הדומיינים, בשתי תצורות התצוגה
+   ([צ'קליסט](docs/testing/TESTING.md)).
+5. מעדכנים את ה-CHANGELOG הזה ומעלים לשתי החנויות.

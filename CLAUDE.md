@@ -12,27 +12,45 @@ This repo is the **public, open-source source of truth** for the extension in
 Nothing extension-related lives in the private `court_downloader` monorepo any
 more — if you find a copy there, it is stale; delete it rather than edit it.
 
-## Layout — two browser builds, side by side
+## Layout — ONE source tree, two build targets
 
-| Path | What | Version |
-|---|---|---|
-| `chrome/` | Chrome/Edge extension — **the lead build**, gets features first | 0.18.37 |
-| `firefox/` | Firefox/AMO port — separate tree, lags the Chrome feature set | 0.17.15 |
+| Path | What |
+|---|---|
+| `src/` | **the entire extension** — Chrome and Firefox both build from here |
 | `docs/` | `screenshots/`, `chrome-web-store/`, `firefox-amo/`, `testing/`, `site/` |
 
 `CHANGELOG.md` at the repo root is the single version history for both browsers —
-**update it on every release**, in the right browser's section.
+**update it on every release**.
 
-The two trees are separate because the Firefox port was made from an earlier
-Chrome version and uses a different OAuth flow (`identity.launchWebAuthFlow` +
-a Google *Web application* client, vs Chrome's `getAuthToken`) — see
-`docs/firefox-amo/SETUP_FIREFOX.md`. The intended end state is ONE tree with a
-per-target build (`--target=firefox`), like the sibling "לץ הממשל" extension;
-until then, a change that must reach both browsers has to be applied twice.
-Firefox specifics (event-page background, `chrome`→`browser` shim, the mandatory
-`data_collection_permissions` manifest key) are covered by the `firefox-port` skill.
+### 🚨 Every release ships to BOTH browsers, at the same version
 
-## Architecture (`chrome/` — the Firefox tree mirrors it)
+There is no "Chrome version" and "Firefox version" any more. Develop in `src/`,
+then `npm run build:all` produces both packages from the same code. Never
+reintroduce a parallel `firefox/` tree — the old split silently drifted eight
+months and left Firefox users without the judge calendar, quick locate,
+favorites and the floating window.
+
+Exactly **one file** differs between targets: the manifest, transformed at build
+time by `toFirefoxManifest()` in `src/build-zip.js` (service worker → event page,
+add `browser_specific_settings.gecko` with the permanent id + `strict_min_version:
+140` + the mandatory `data_collection_permissions: {required:["none"]}`, drop the
+Chrome-only `oauth2` key). `tests/dual-build.test.js` pins that contract.
+
+Code-level cross-browser adaptation is deliberately just two seams:
+- `shared/browser-compat.js` — aliases `chrome`→`browser` on Firefox so
+  `await chrome.*` works everywhere. It must stay **first** in the
+  content-script list; contexts without a guaranteed load order (background,
+  popup, options, about) inline the same three lines at the top of their file.
+- OAuth in `background/service-worker.js` — capability-detects
+  `chrome.identity.getAuthToken` (Chrome) and otherwise runs the implicit flow
+  via `identity.launchWebAuthFlow` (Firefox), which needs a Google *Web
+  application* client id — see `docs/firefox-amo/SETUP_FIREFOX.md`.
+
+Add new browser-conditional code only at those seams, and prefer capability
+detection over user-agent sniffing. Deeper Firefox/AMO background lives in the
+`firefox-port` skill.
+
+## Architecture (`src/`)
 
 Content scripts run on the court portal pages and inject UI panels; a service
 worker coordinates downloads and the Google Drive OAuth flow.
@@ -60,19 +78,22 @@ worker coordinates downloads and the Google Drive OAuth flow.
 
 ## Build & test
 
-All npm work happens **inside `chrome/`** (that's where `package.json` lives):
+All npm work happens **inside `src/`** (that's where `package.json` lives):
 
-- `cd chrome && npm test` — jsdom unit suite (`tests/run-tests.js`), offline.
+- `npm test` — jsdom unit suite (`tests/run-tests.js`), offline.
   **Must be green before every release.**
-- `cd chrome && npm run build` — clean ZIP for the Chrome Web Store.
-- `cd firefox && node build-zip.js` — clean ZIP for AMO. Validate with
-  `npx web-ext lint --source-dir <unzipped>` (expect 0 errors; the Android
-  min-version warning is benign).
+- `npm run build` — ZIP for the Chrome Web Store.
+- `npm run build:firefox` — ZIP for AMO, plus `dist/firefox/` unpacked for
+  `about:debugging`. Validate with `npx web-ext lint --source-dir dist/firefox`
+  (expect 0 errors; the Android min-version warning is benign).
+- `npm run build:all` — **the release command**: both packages, one version.
 
 ## 🚨 Release / testing policy (mandatory per version)
 
 See `docs/testing/TESTING.md` for the full checklist. Non-negotiables:
 
+0. **Ship both browsers together** — `npm run build:all`, same version, and
+   update `CHANGELOG.md`. A change is not done when Chrome works.
 1. **Test on BOTH Net HaMishpat domains** — the no-auth public domain
    (`www.court.gov.il/NGCS.Web.Site/…`) AND the authenticated secure domain
    (`securesso.court.gov.il/Ngcs.Web.Secured/…`). Their DOM differs, so a
