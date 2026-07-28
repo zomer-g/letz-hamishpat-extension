@@ -1,0 +1,10 @@
+{
+  "extension_name": {
+    "message": "מוריד מסמכים אצווה — נט המשפט (Lite)",
+    "description": "Extension display name"
+  },
+  "extension_description": {
+    "message": "סימון והורדה של מסמכים מרובים מתיק בנט המשפט לקובץ ZIP אחד עם אינדקס. גרסה רזה — הורדה מקומית בלבד.",
+    "description": "Short description"
+  }
+}

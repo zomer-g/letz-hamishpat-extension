@@ -1,22 +1,39 @@
 # letz-hamishpat-extension — Project Instructions
 
-**לץ המשפט** — a Manifest V3 Chrome extension for Israel's Net HaMishpat
+**לץ המשפט** — a Manifest V3 browser extension for Israel's Net HaMishpat
 court portal (נט המשפט). Fully client-side: bulk document download (→ local
 ZIP / File System Access API / Google Drive), hearing & judge calendars,
 quick case locate ("איתור תיק"), and favorites. No backend of its own — it
 reads the court portal DOM and the portal's own JSON stores; nothing is sent
 to any server we run.
 
-This repo is the **public, open-source source of truth** for the extension
-(MIT, CI on GitHub). Public repo: `zomer-g/letz-hamishpat-extension`.
+This repo is the **public, open-source source of truth** for the extension in
+**both browsers** (MIT, CI on GitHub): `zomer-g/letz-hamishpat-extension`.
+Nothing extension-related lives in the private `court_downloader` monorepo any
+more — if you find a copy there, it is stale; delete it rather than edit it.
 
-> Historical note: the extension used to live as `chrome-extension/` inside the
-> private `court_downloader` monorepo. It was split out into this standalone
-> repo. If a `chrome-extension/` copy still exists in that monorepo, treat
-> **this** repo as authoritative and do not edit both — see the source-of-truth
-> note in the monorepo before touching either.
+## Layout — two browser builds, side by side
 
-## Architecture
+| Path | What | Version |
+|---|---|---|
+| `chrome/` | Chrome/Edge extension — **the lead build**, gets features first | 0.18.37 |
+| `firefox/` | Firefox/AMO port — separate tree, lags the Chrome feature set | 0.17.15 |
+| `chrome-lite/` | Archived stripped-down variant; unmaintained, never published | 1.0.0 |
+| `docs/` | `screenshots/`, `chrome-web-store/`, `firefox-amo/`, `testing/`, `site/` |
+
+`CHANGELOG.md` at the repo root is the single version history for both browsers —
+**update it on every release**, in the right browser's section.
+
+The two trees are separate because the Firefox port was made from an earlier
+Chrome version and uses a different OAuth flow (`identity.launchWebAuthFlow` +
+a Google *Web application* client, vs Chrome's `getAuthToken`) — see
+`docs/firefox-amo/SETUP_FIREFOX.md`. The intended end state is ONE tree with a
+per-target build (`--target=firefox`), like the sibling "לץ הממשל" extension;
+until then, a change that must reach both browsers has to be applied twice.
+Firefox specifics (event-page background, `chrome`→`browser` shim, the mandatory
+`data_collection_permissions` manifest key) are covered by the `firefox-port` skill.
+
+## Architecture (`chrome/` — the Firefox tree mirrors it)
 
 Content scripts run on the court portal pages and inject UI panels; a service
 worker coordinates downloads and the Google Drive OAuth flow.
@@ -44,13 +61,18 @@ worker coordinates downloads and the Google Drive OAuth flow.
 
 ## Build & test
 
-- `npm test` — jsdom unit suite (`tests/run-tests.js`), offline. **Must be green
-  before every release.**
-- `npm run build` — `build-zip.js` → clean ZIP for the Chrome Web Store.
+All npm work happens **inside `chrome/`** (that's where `package.json` lives):
+
+- `cd chrome && npm test` — jsdom unit suite (`tests/run-tests.js`), offline.
+  **Must be green before every release.**
+- `cd chrome && npm run build` — clean ZIP for the Chrome Web Store.
+- `cd firefox && node build-zip.js` — clean ZIP for AMO. Validate with
+  `npx web-ext lint --source-dir <unzipped>` (expect 0 errors; the Android
+  min-version warning is benign).
 
 ## 🚨 Release / testing policy (mandatory per version)
 
-See `TESTING.md` for the full checklist. Non-negotiables:
+See `docs/testing/TESTING.md` for the full checklist. Non-negotiables:
 
 1. **Test on BOTH Net HaMishpat domains** — the no-auth public domain
    (`www.court.gov.il/NGCS.Web.Site/…`) AND the authenticated secure domain
@@ -85,6 +107,11 @@ MV3 forbids remote code — all third-party code must be vendored under `vendor/
 ## Repo hygiene
 
 - `_locales/` Hebrew strings drive the UI; keep them in sync with features.
-- `LICENSE` (MIT), `SECURITY.md`, `PRIVACY_POLICY.md`, `STORE_LISTING.md`,
-  `REVIEWER_NOTES.md`, `CWS_DASHBOARD_TEXTS.md` are the Chrome Web Store /
-  open-source paperwork — keep them current when behavior or permissions change.
+- `CHANGELOG.md` — update on every release, under the right browser.
+- Store paperwork lives in `docs/`: `chrome-web-store/` (`STORE_LISTING.md`,
+  `REVIEWER_NOTES.md`, `CWS_DASHBOARD_TEXTS.md`) and `firefox-amo/`
+  (`AMO_PUBLISH_GUIDE.md`, `AMO_LISTING.md`, `AMO_REVIEWER_NOTES.md`,
+  `SETUP_FIREFOX.md`). Keep them current when behavior or permissions change —
+  a permission change means BOTH stores' declarations need review.
+- `docs/screenshots/` is shared by both stores (1280×800). Regenerate via the
+  marketing template rather than hand-editing PNGs.

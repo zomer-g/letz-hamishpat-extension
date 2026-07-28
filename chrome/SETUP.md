@@ -75,7 +75,7 @@ OAuth של Chrome קשור ל־ID של התוסף. כדי שה־ID לא ישתנ
 5. העתק את ה־**Client ID** שנוצר (נראה כמו `1234-abcd.apps.googleusercontent.com`).
 
 ### שלב ג — הזנה ל־manifest
-ב־`chrome-extension/manifest.json`, החלף את ה־placeholder:
+ב־`chrome/manifest.json`, החלף את ה־placeholder:
 
 ```json
 "oauth2": {

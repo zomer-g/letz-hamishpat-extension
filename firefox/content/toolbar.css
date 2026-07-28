@@ -1,0 +1,775 @@
+/* In-page panel injected directly above the documents grid.
+   Styled to match Net HaMishpat exactly: AG-grid blue (#4E95D8), navy borders
+   (#244669), light-blue dividers (#9BC2E6), navy text (#333366), Arial 12px,
+   square corners — so it reads as a native section of the site. */
+.cd-panel {
+  direction: rtl;
+  font-family: Arial, "Arial Hebrew", sans-serif;
+  font-size: 12px;
+  color: #333366;
+  margin: 6px 0;
+  border: 1px solid #244669;
+  border-radius: 0;
+  background: #eaf2fb;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.cd-panel__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: #4e95d8;
+  background-image: linear-gradient(to bottom, #5fa0dd 0%, #4e95d8 100%);
+  color: #ffffff;
+  border-bottom: 1px solid #244669;
+}
+
+.cd-panel__title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-inline-end: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.cd-panel__actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Buttons mirror the site's flat, square, navy-bordered blue buttons. */
+.cd-panel__btn {
+  font: inherit;
+  cursor: pointer;
+  background: #ffffff;
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eaf0f7 100%);
+  color: #244669;
+  border: 1px solid #244669;
+  border-radius: 0;
+  padding: 3px 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.cd-panel__btn:hover:not([disabled]) {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #d9e6f5 100%);
+}
+.cd-panel__btn:active:not([disabled]) {
+  background-image: linear-gradient(to bottom, #d9e6f5 0%, #ffffff 100%);
+}
+
+/* Primary action: the site's solid blue button with white text. */
+.cd-panel__btn--primary {
+  background: #4e94d9;
+  background-image: linear-gradient(to bottom, #5fa0dd 0%, #4e94d9 100%);
+  color: #ffffff;
+  border-color: #244669;
+}
+.cd-panel__btn--primary:hover:not([disabled]) {
+  background-image: linear-gradient(to bottom, #6cabe2 0%, #4e94d9 100%);
+}
+
+/* Ghost buttons sit on the blue bar — white outline. */
+.cd-panel__btn--ghost {
+  background: rgba(255, 255, 255, 0.12);
+  background-image: none;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+.cd-panel__btn--ghost:hover:not([disabled]) {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.cd-panel__btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cd-panel__close {
+  background: transparent !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  padding: 0 6px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  margin-inline-start: 2px;
+  line-height: 1;
+}
+.cd-panel__close:hover {
+  color: #ffe9a8 !important;
+}
+
+/* Settings gear button on the bar. */
+.cd-panel__gear {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  padding: 2px 7px !important;
+  font-size: 13px !important;
+}
+
+.cd-panel__status {
+  padding: 5px 10px;
+  background: #fcf8e3;
+  color: #6b5a16;
+  border-top: 1px solid #9bc2e6;
+  font-size: 12px;
+  min-height: 1.4em;
+}
+.cd-panel__status.error {
+  background: #f7e0e0;
+  color: #8a1f1f;
+  border-top-color: #d9a0a0;
+  font-weight: 700;
+}
+.cd-panel__status.idle {
+  background: #eaf2fb;
+  color: #33476b;
+  border-top-color: #9bc2e6;
+}
+
+/* Count badge: small navy pill. */
+.cd-panel__count {
+  background: #244669;
+  color: #ffffff;
+  border-radius: 2px;
+  padding: 1px 7px;
+  font-weight: 700;
+  margin-inline-start: 4px;
+}
+
+/* Destination chips (shown when server/Drive are enabled). */
+.cd-panel__dest {
+  display: inline-block;
+  background: #244669;
+  color: #fff;
+  border-radius: 2px;
+  padding: 1px 6px;
+  margin-inline-start: 4px;
+  font-size: 11px;
+}
+
+/* PDF/Word format switch on the bar (decisions/judgments/protocols screens). */
+.cd-fmt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  margin-inline-start: 4px;
+}
+.cd-fmt__b {
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 0;
+  padding: 2px 8px;
+  margin-inline-start: 2px;
+}
+.cd-fmt__b.is-active { background: #fff; color: #244669; }
+.cd-fmt__idx { color: #fff; font-size: 11px; font-weight: 700; margin-inline-start: 8px; white-space: nowrap; cursor: pointer; }
+.cd-fmt__idx input { vertical-align: middle; margin-inline-end: 3px; }
+
+/* Protocols screen: hide the site's own checkboxes in the protocol/transcript
+   cells (we inject our own there). CSS — not JS — so AG-Grid re-renders can't
+   bring the native checkbox back. These col-ids exist only on that screen. */
+[col-id="ProtocolDocument"] input[type="checkbox"]:not(.cd-row-cb),
+[col-id="TranscriptionlDocument"] input[type="checkbox"]:not(.cd-row-cb) {
+  display: none !important;
+}
+
+/* Date-range row for the hearings panel (user mode). */
+.cd-panel__hr-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: #eaf2fb;
+  border-top: 1px solid #9bc2e6;
+  font-size: 12px;
+  color: #244669;
+}
+.cd-panel__hr-range label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cd-panel__hr-range input[type="text"] {
+  font: inherit;
+  border: 1px solid #9bc2e6;
+  background: #ffffff;
+  padding: 2px 6px;
+  border-radius: 0;
+  color: #244669;
+  direction: ltr;
+  text-align: center;
+}
+.cd-panel__hint {
+  color: #6b7891;
+  font-size: 11px;
+  margin-inline-start: 4px;
+}
+/* Row 2 of the judge panel: all the actions, below the date-range row. */
+.cd-panel__hr-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: #f3f8fd;
+  border-top: 1px solid #cfe0f1;
+}
+.cd-panel__judge-readout {
+  font-weight: 700;
+  color: #244669;
+  background: #fff;
+  border: 1px solid #9bc2e6;
+  padding: 2px 8px;
+  margin-inline-end: 6px;
+  white-space: nowrap;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Global header sync button (header-sync.js) ─────────────────────────── */
+#cd-hsync {
+  font-family: Arial, "Arial Hebrew", sans-serif;
+  font-size: 12px;
+  direction: rtl;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: relative; /* anchor for the floating sync-status tooltip */
+}
+/* Inline placement inside the site header strip, next to the envelope. */
+#cd-hsync.cd-hsync--inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+  margin: 0 8px;
+}
+/* Fallback floating placement on pages without the header strip. */
+#cd-hsync.cd-hsync--fixed {
+  position: fixed;
+  top: 8px;
+  left: 12px;
+  z-index: 2147483646;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 320px;
+  background: #ffffff;
+  border: 1px solid #244669;
+  border-radius: 4px;
+  padding: 4px 8px 4px 6px;
+  box-shadow: 0 2px 6px rgba(36, 70, 105, 0.25);
+}
+.cd-hsync__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  background: #2e6da4;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 3px;
+}
+/* Hide the extension's own badge when inline (the site logo is right there). */
+#cd-hsync.cd-hsync--inline .cd-hsync__logo { display: none; }
+
+/* ── Header: keep the ORIGINAL logo/text/background untouched. Add (a) a
+   uniform blue→transparent bottom band that masks the header image's diagonal
+   gradient seam (1px on the left, ~25px on the right) so it reads the same
+   across the width, plus a thin dark-blue bottom line; and (b) a colorful
+   clown/party hat on the blue "N" logo at the far right. */
+/* Header table — id varies by page (Header1_Table / _ctl0_Header_Table), but
+   the HeaderHomePage class is constant. Anchor the hat to it on every page. */
+table.HeaderHomePage {
+  position: relative !important;
+  border-bottom: 0 !important;
+  overflow: visible !important;
+}
+/* Uniform bottom strip (constant height across the width) that masks the
+   header image's diagonal blue seam. OPAQUE (no transparency) so the slanted
+   gradient underneath can't show through and look wavy; a thin dark-blue line
+   at the very bottom fading up into the header's light tone. Kept short
+   (15px) and below the logo (logo occupies the top ~68px). */
+#cd-hdr-fix {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24px;
+  z-index: 2;
+  pointer-events: none;
+  /* OPAQUE blue→light gradient reproducing the header image's right-edge
+     gradient, applied uniformly across the full width (no transparency → no
+     wavy show-through of the diagonal seam underneath). */
+  background: linear-gradient(to top, #3f82c4 0%, #7fb1e3 30%, #bcd8f1 60%, #e6f1fb 100%);
+}
+/* Realistic clown/party hat — an inline SVG (built in header-sync.js) with
+   stripes converging at the apex, a gradient + fuzzy red pom-pom, a yellow
+   pom-pom fringe, and a sheen. Sized + lowered so it isn't clipped at the top. */
+#cd-lg-hat {
+  position: absolute;
+  z-index: 40;
+  width: 34px;
+  height: 40px;
+  right: 6px;
+  top: 4px;
+  transform: rotate(11deg);
+  pointer-events: auto;
+  cursor: pointer;
+  text-decoration: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+#cd-lg-hat svg { display: block; width: 100%; height: 100%; }
+#cd-lg-hat:hover { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)); }
+
+/* "לץ המשפט" master on/off toggle. Lives in the site's top user strip (next to
+   the envelope / username / "יציאה") on every page — a normal spot that never
+   covers the logo. Click toggles the whole extension on/off (see the
+   html.cd-ext-off rule below). */
+#cd-jester-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  vertical-align: middle;
+  margin: 0 8px;
+  /* Inline in the header strip (where the user looks), positioned so its own
+     clicks aren't swallowed. The on/off "jump" is prevented by reserving the
+     sync button's space when off (see the html.cd-ext-off #cd-hsync rule). */
+  position: relative;
+  /* Very high (beats any site element) but BELOW our own full-screen overlays
+     (judge calendar / collecting masks at 2147483645-6) so they cover it. */
+  z-index: 2147483640;
+  pointer-events: auto !important;
+  font-family: Arial, "Arial Hebrew", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  border: 1px solid #244669;
+  /* square frame to match the site's rectangular buttons (not a rounded pill) */
+  border-radius: 2px;
+  /* compact so it sits on the same line as "יציאה" / the other header items */
+  padding: 1px 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 1px 3px rgba(36, 70, 105, 0.3);
+  transition: filter 0.12s, background 0.12s;
+}
+#cd-jester-toggle * { pointer-events: none; } /* clicks always land on the toggle itself */
+#cd-jester-toggle .jt-ico { font-size: 12px; line-height: 1; }
+#cd-jester-toggle .jt-name { font-weight: 700; }
+/* sliding ON/OFF switch (compact) */
+#cd-jester-toggle .jt-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 12px;
+  border-radius: 7px;
+  background: #b9b9b9;
+  transition: background 0.15s;
+}
+#cd-jester-toggle .jt-knob {
+  position: absolute;
+  top: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: right 0.15s;
+}
+#cd-jester-toggle.cd-jester-toggle--on {
+  background: #eafaef;
+  color: #1b6b34;
+  border-color: #2ca02c;
+}
+#cd-jester-toggle.cd-jester-toggle--on .jt-switch { background: #2ca02c; }
+#cd-jester-toggle.cd-jester-toggle--on .jt-knob { right: 2px; }
+#cd-jester-toggle.cd-jester-toggle--on .jt-state { color: #1b6b34; }
+#cd-jester-toggle.cd-jester-toggle--off {
+  background: #f4f4f4;
+  color: #8a8a8a;
+  border-color: #bcbcbc;
+}
+#cd-jester-toggle.cd-jester-toggle--off .jt-switch { background: #c0392b; }
+#cd-jester-toggle.cd-jester-toggle--off .jt-knob { right: 14px; }
+#cd-jester-toggle.cd-jester-toggle--off .jt-ico { filter: grayscale(1); opacity: 0.6; }
+#cd-jester-toggle.cd-jester-toggle--off .jt-state { color: #c0392b; }
+#cd-jester-toggle:hover { filter: brightness(1.05); }
+#cd-jester-toggle:active { transform: translateY(1px); }
+/* Fixed placement on pages with no user strip (e.g. the public portal) — pinned
+   to the top-left so it's always visible and consistent, in the empty margin
+   beside the centered header. Below our own overlays (2147483645-6). */
+#cd-jester-toggle.cd-jt--fixed {
+  position: fixed !important;
+  top: 6px;
+  left: 8px;
+  z-index: 2147483640;
+}
+/* Public portal (no user strip): anchored inside the header table, top-left of
+   the header strip (empty there) — aligned with the centered header. */
+#cd-jester-toggle.cd-jt--inheader {
+  position: absolute !important;
+  top: 4px;
+  left: 8px;
+  z-index: 2147483640;
+}
+
+/* ── Master OFF switch ──────────────────────────────────────────────────
+   When the extension is turned off, hide EVERY injected widget across the
+   whole domain (panels, row checkboxes, masks, the judge calendar, the sync
+   button, the clown hat, the header gradient …) — leaving only the toggle so
+   the user can switch it back on. Injected roots are all cd-* (by id or by a
+   class that starts with "cd-"); the toggle's own children use jt-* classes,
+   so they are never matched. */
+html.cd-ext-off [id^="cd-"]:not(#cd-jester-toggle):not([id^="cd-hsync"]),
+html.cd-ext-off [class^="cd-"]:not(#cd-jester-toggle):not([class^="cd-hsync"]) {
+  display: none !important;
+}
+/* The sync button family is hidden with visibility (not display:none) so it
+   keeps its width — the toggle beside it then stays put on on/off (no jump). */
+html.cd-ext-off #cd-hsync { visibility: hidden !important; }
+
+.cd-hsync__btn {
+  cursor: pointer;
+  font-family: Arial, "Arial Hebrew", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  background-image: linear-gradient(to bottom, #5fa0dd 0%, #4e94d9 100%);
+  color: #fff;
+  border: 1px solid #244669;
+  border-radius: 3px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+.cd-hsync__btn:hover:not([disabled]) { background-image: linear-gradient(to bottom, #6cabe2 0%, #4e94d9 100%); }
+.cd-hsync__btn[disabled] { opacity: 0.6; cursor: progress; }
+/* Sync status (last-sync time / progress) — a floating tooltip that appears
+   only while hovering the sync button, so it never takes up header space. */
+.cd-hsync__ts {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 5px;
+  background: #244669;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: 4px;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+  z-index: 2147483647;
+}
+.cd-hsync__ts:empty { display: none; }
+#cd-hsync:hover .cd-hsync__ts,
+#cd-hsync:focus-within .cd-hsync__ts { opacity: 1; visibility: visible; }
+
+/* Google Calendar sync row. */
+.cd-panel__sync {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 5px 10px;
+  background: #eaf2fb;
+  border-top: 1px solid #9bc2e6;
+  font-size: 12px;
+  color: #244669;
+}
+.cd-panel__sync-label { font-weight: 700; }
+.cd-panel__cal {
+  font: inherit;
+  border: 1px solid #9bc2e6;
+  background: #fff;
+  color: #244669;
+  padding: 3px 6px;
+  border-radius: 0;
+  max-width: 240px;
+}
+.cd-panel__sync-ts {
+  flex-basis: 100%;
+  color: #33476b;
+  font-size: 11px;
+  margin-inline-start: 2px;
+}
+
+/* ── Date-picker popup (shared/datepicker.js) ───────────────────────────── */
+.cd-dp {
+  position: fixed;
+  z-index: 2147483647;
+  width: 252px;
+  background: #fff;
+  border: 1px solid #244669;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-family: Arial, "Arial Hebrew", sans-serif;
+  font-size: 12px;
+  color: #244669;
+  direction: rtl;
+  padding: 6px;
+  box-sizing: border-box;
+}
+.cd-dp__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.cd-dp__nav {
+  cursor: pointer;
+  background: #4e95d8;
+  color: #fff;
+  border: 1px solid #244669;
+  border-radius: 0;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  padding: 3px 9px;
+}
+.cd-dp__nav:hover { background: #3f82c4; }
+.cd-dp__sel {
+  flex: 1;
+  font: inherit;
+  border: 1px solid #9bc2e6;
+  background: #fff;
+  color: #244669;
+  padding: 3px 4px;
+  border-radius: 0;
+}
+.cd-dp__dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: 700;
+  color: #5a6a85;
+  border-bottom: 1px solid #9bc2e6;
+  padding-bottom: 3px;
+  margin-bottom: 3px;
+}
+.cd-dp__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+.cd-dp__day {
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  background: #fff;
+  color: #244669;
+  border: 1px solid transparent;
+  border-radius: 0;
+  padding: 5px 0;
+}
+.cd-dp__day:hover { background: #d9e6f5; border-color: #9bc2e6; }
+.cd-dp__day--other { color: #b9c4d4; }
+.cd-dp__day--today { border-color: #4e95d8; font-weight: 700; }
+.cd-dp__day--sel {
+  background: #4e94d9;
+  color: #fff;
+  font-weight: 700;
+}
+.cd-dp__day--dis {
+  color: #c7d0dc;
+  background: #f4f7fb;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.cd-dp__day--dis:hover { background: #f4f7fb; border-color: transparent; }
+
+/* Our own selection checkbox injected into each AG-Grid row. */
+.cd-row-cb {
+  margin-inline-end: 8px;
+  vertical-align: middle;
+  cursor: pointer;
+  accent-color: #4e95d8;
+  transform: scale(1.2);
+  position: relative;
+  z-index: 5;
+}
+
+/* ── Judge-calendar floating window (content/judge-calendar.js) ──────────── */
+.cd-jcal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: rgba(20, 35, 60, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  direction: rtl;
+  font-family: Arial, "Arial Hebrew", sans-serif;
+  color: #333366;
+}
+.cd-jcal {
+  display: flex;
+  flex-direction: column;
+  width: 94vw;
+  max-width: 1180px;
+  height: 90vh;
+  background: #eef4fb;
+  border: 1px solid #244669;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+}
+.cd-jcal__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background-image: linear-gradient(to bottom, #5fa0dd 0%, #4e95d8 100%);
+  color: #fff;
+  border-bottom: 1px solid #244669;
+}
+.cd-jcal__title { font-weight: 700; font-size: 15px; margin-inline-end: auto; }
+.cd-jcal__sub { font-weight: 400; font-size: 12px; opacity: 0.92; }
+.cd-jcal__close {
+  cursor: pointer; background: rgba(255, 255, 255, 0.15); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 0;
+  font-size: 16px; line-height: 1; padding: 2px 9px; font-weight: 700;
+}
+.cd-jcal__close:hover { background: rgba(255, 255, 255, 0.3); }
+.cd-jcal__controls {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px;
+  padding: 7px 12px; background: #dde9f7; border-bottom: 1px solid #9bc2e6;
+}
+.cd-jcal__views, .cd-jcal__nav, .cd-jcal__fields { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.cd-jcal__fields { gap: 10px; margin-inline-start: auto; }
+.cd-jcal__btn {
+  font: inherit; font-size: 12px; cursor: pointer; font-weight: 700;
+  background-image: linear-gradient(to bottom, #fff 0%, #eaf0f7 100%);
+  color: #244669; border: 1px solid #244669; border-radius: 0; padding: 3px 11px;
+}
+.cd-jcal__btn:hover { background-image: linear-gradient(to bottom, #fff 0%, #dbe6f5 100%); }
+.cd-jcal__viewbtn.is-active {
+  background-image: linear-gradient(to bottom, #5fa0dd 0%, #4e94d9 100%); color: #fff;
+}
+.cd-jcal__period { font-weight: 700; color: #244669; margin-inline-start: 6px; }
+.cd-jcal__fld { font-size: 12px; font-weight: 700; color: #244669; white-space: nowrap; cursor: pointer; }
+.cd-jcal__body { flex: 1; overflow: auto; padding: 8px; background: #eef4fb; }
+
+/* Columnar views (day / 4-day / week). */
+.cd-jcal__cols { display: grid; gap: 6px; min-height: 100%; }
+.cd-jcal__col { background: #fff; border: 1px solid #9bc2e6; display: flex; flex-direction: column; }
+.cd-jcal__colhead {
+  position: sticky; top: 0; z-index: 1;
+  background: #dde9f7; border-bottom: 1px solid #9bc2e6; color: #244669;
+  font-weight: 700; text-align: center; padding: 4px 2px;
+}
+.cd-jcal__colhead.is-today { background: #4e94d9; color: #fff; }
+.cd-jcal__badge {
+  display: inline-block; min-width: 16px; padding: 0 4px; margin-inline-start: 4px;
+  background: #244669; color: #fff; border-radius: 8px; font-size: 10px; line-height: 16px;
+}
+.cd-jcal__colhead.is-today .cd-jcal__badge { background: #fff; color: #2e6da4; }
+.cd-jcal__events { padding: 4px; display: flex; flex-direction: column; gap: 4px; }
+.cd-jcal__ev {
+  background: #f3f8ff; border: 1px solid #c6dcf2; border-inline-start: 3px solid #4e95d8;
+  padding: 4px 6px; font-size: 12px; line-height: 1.35;
+}
+.cd-jcal__ev-time { font-weight: 700; color: #1c4f8a; }
+.cd-jcal__ev-line { color: #333366; }
+.cd-jcal__nm { color: #5a3a7a; }
+.cd-jcal__t { font-weight: 700; color: #1c4f8a; }
+.cd-jcal__empty { color: #9aa8bd; text-align: center; padding: 10px 4px; font-size: 11px; }
+.cd-jcal__muted { color: #9aa8bd; }
+
+/* Month view. */
+/* ONE grid holds both the day-name header row and the day cells, so the 7
+   columns are guaranteed to line up. */
+.cd-jcal__month {
+  display: grid;
+  /* minmax(0,1fr) — without the 0 floor, a cell with a long (nowrap) hearing
+     chip forces its column wider than 1fr, overflowing the 7-column grid and
+     clipping the right-hand day columns. The 0 floor lets columns shrink so
+     chips truncate (ellipsis) instead of pushing the grid out. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: #9bc2e6;
+  border: 1px solid #9bc2e6;
+}
+.cd-jcal__mhead {
+  background: #dde9f7; color: #244669; font-weight: 700; text-align: center; padding: 4px 0;
+  position: sticky; top: 0; z-index: 1; /* day names stay visible while scrolling */
+}
+.cd-jcal__cell { background: #fff; min-height: 92px; padding: 3px; display: flex; flex-direction: column; gap: 2px; }
+.cd-jcal__cell.is-out { background: #f3f6fb; }
+.cd-jcal__cell.is-out .cd-jcal__cell-day { color: #b9c4d4; }
+.cd-jcal__cell.is-today { outline: 2px solid #4e94d9; outline-offset: -2px; }
+.cd-jcal__cell-day { font-weight: 700; color: #244669; font-size: 12px; text-align: start; }
+.cd-jcal__chip {
+  background: #f3f8ff; border: 1px solid #c6dcf2; border-inline-start: 3px solid #4e95d8;
+  padding: 1px 4px; font-size: 11px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cd-jcal__more { font-size: 10px; color: #2e6da4; font-weight: 700; }
+
+/* ── Full-screen "collecting" mask shown during the judge day-by-day report
+   collection (which reloads the page per day). It covers the flickering grid
+   with a steady overlay; it persists across reloads while the job is active. */
+.cd-collect-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483645;
+  background: rgba(238, 244, 251, 0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  direction: rtl;
+  font-family: Arial, "Arial Hebrew", sans-serif;
+  color: #244669;
+}
+.cd-collect-mask__card {
+  background: #fff;
+  border: 1px solid #244669;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.25);
+  padding: 22px 30px;
+  text-align: center;
+  min-width: 320px;
+  max-width: 80vw;
+}
+.cd-collect-mask__title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.cd-collect-mask__msg { font-size: 13px; color: #33476b; margin-bottom: 14px; }
+.cd-collect-mask__bar {
+  height: 10px; background: #dde9f7; border: 1px solid #9bc2e6; overflow: hidden;
+}
+.cd-collect-mask__fill {
+  height: 100%; width: 0; background-image: linear-gradient(to bottom, #5fa0dd, #4e94d9);
+  transition: width 0.2s ease;
+}
+.cd-collect-mask__spin {
+  width: 34px; height: 34px; margin: 0 auto 12px;
+  border: 4px solid #cfe0f4; border-top-color: #4e94d9; border-radius: 50%;
+  animation: cd-spin 0.9s linear infinite;
+}
+@keyframes cd-spin { to { transform: rotate(360deg); } }
+.cd-collect-mask__cancel {
+  margin-top: 14px; font: inherit; font-weight: 700; cursor: pointer;
+  background-image: linear-gradient(to bottom, #fff, #eaf0f7); color: #244669;
+  border: 1px solid #244669; border-radius: 0; padding: 4px 14px;
+}

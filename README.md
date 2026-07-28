@@ -1,8 +1,10 @@
-# לץ המשפט — תוסף כרום לנט המשפט ⚖️🃏
+# לץ המשפט — תוסף דפדפן לנט המשפט ⚖️🃏
 
-**לץ המשפט** הוא תוסף Chrome (Manifest V3) שמוסיף כלי עבודה מהירים למערכת **נט המשפט** של בתי המשפט בישראל — הורדת מסמכים בבת אחת, ייצוא יומני דיונים, יומן שופט/ת, איתור תיק מהיר ותיקים מועדפים. הכול רץ מקומית בדפדפן, בתוך הסשן המחובר של המשתמש.
+**לץ המשפט** מוסיף כלי עבודה מהירים למערכת **נט המשפט** של בתי המשפט בישראל —
+הורדת מסמכים בבת אחת, ייצוא יומני דיונים, יומן שופט/ת, איתור תיק מהיר ותיקים
+מועדפים. הכול רץ מקומית בדפדפן, בתוך הסשן המחובר של המשתמש.
 
-> 🛒 [להתקנה מחנות Chrome](https://chromewebstore.google.com/) · 🌐 [עמוד התוסף](https://www.z-g.co.il/court-downloader) · 🔒 [מדיניות פרטיות](https://www.z-g.co.il/court-downloader/privacy)
+> 🌐 [עמוד התוסף](https://www.z-g.co.il/court-downloader) · 🔒 [מדיניות פרטיות](https://www.z-g.co.il/court-downloader/privacy) · 📋 [היסטוריית גרסאות](CHANGELOG.md)
 
 ![לץ המשפט](docs/screenshots/hero.png)
 
@@ -11,13 +13,24 @@
 | ![הורדת מסמכים](docs/screenshots/documents.png) | ![יומן שופט](docs/screenshots/judge.png) |
 | ![איתור תיק ומועדפים](docs/screenshots/locate.png) | ![ייצוא יומן דיונים](docs/screenshots/hearings.png) |
 
+## גרסאות
+
+| דפדפן | גרסה | קוד | סטטוס |
+|---|---|---|---|
+| **Chrome / Edge** | 0.18.37 | [`chrome/`](chrome/) | פורסם בחנות |
+| **Firefox** | 0.17.15 | [`firefox/`](firefox/) | מוכן להגשה ל-AMO |
+| Chrome (Lite) | 1.0.0 | [`chrome-lite/`](chrome-lite/) | ארכיון, לא מתוחזק |
+
+פורט הפיירפוקס מבוסס על גרסת כרום מוקדמת יותר וטרם כולל את יומן השופט/ת, איתור
+התיק והמועדפים. פירוט מלא ותוכנית ההשוואה: [CHANGELOG.md](CHANGELOG.md).
+
 ## מה התוסף עושה
 
 - **📥 הורדת מסמכים באצווה** — סימון מסמכים מכל תיקיות התיק (החלטות, בקשות, כתבי טענות, פרוטוקולים, מוצגים, תיק נייר…) והורדה כ-ZIP אחד עם אינדקס CSV. ה-PDF נבנה בדפדפן (jsPDF) מתוך ה-viewer של האתר.
 - **📅 יומני דיונים** — ייצוא רשימות דיונים (כולל "הדיונים שלי" חוצה-תיקים בטווח תאריכים) כ-CSV + ICS, או סנכרון ישיר ל-Google Calendar.
-- **👩‍⚖️ יומן שופט/ת** — איסוף אוטומטי של דוח "דיונים לשופט ליום דיונים" על פני טווח תאריכים והצגתו כיומן שבועי/חודשי אינטראקטיבי. עובד גם בפורטל הציבורי וגם במאובטח.
-- **🔎 איתור תיק מהיר** — הדבקת מספר תיק בכל פורמט (`39163-07-22`, `39163/07/2022`, `ת"א 39163-07-22`) ופתיחה בלחיצה אחת.
-- **⭐ תיקים מועדפים** — סימון תיקים בכוכב וכניסה מהירה אליהם; נשמר מקומית בלבד.
+- **👩‍⚖️ יומן שופט/ת** *(כרום)* — איסוף אוטומטי של דוח "דיונים לשופט ליום דיונים" על פני טווח תאריכים והצגתו כיומן שבועי/חודשי אינטראקטיבי. עובד גם בפורטל הציבורי וגם במאובטח.
+- **🔎 איתור תיק מהיר** *(כרום)* — הדבקת מספר תיק בכל פורמט (`39163-07-22`, `39163/07/2022`, `ת"א 39163-07-22`) ופתיחה בלחיצה אחת.
+- **⭐ תיקים מועדפים** *(כרום)* — סימון תיקים בכוכב וכניסה מהירה אליהם; נשמר מקומית בלבד.
 - **☁️ יעדים אופציונליים** — לצד ה-ZIP המקומי: שרת API אישי (multipart + `X-API-Key`) או Google Drive. מופעלים רק אם המשתמש הגדיר אותם, עם ההרשאות שלו.
 
 שתי תצורות תצוגה לכל פיצ'ר: **מוטמע** בתוך עמודי האתר, או **חלונית צפה**.
@@ -26,48 +39,59 @@
 
 - אין שרת של התוסף. שום נתון לא נשלח לשום מקום כברירת מחדל — הכול נשאר בדפדפן.
 - התוסף רץ בתוך הסשן הקיים של המשתמש ולא נוגע בסיסמאות/עוגיות; הוא לא מבצע הזדהות בשם המשתמש.
-- יעדי Drive/Calendar משתמשים ב-OAuth של Google בהיקפים מינימליים (`drive.file`, `calendar`); שרת ה-API והמפתח מוזנים ע"י המשתמש ונשמרים ב-`chrome.storage`.
+- יעדי Drive/Calendar משתמשים ב-OAuth של Google בהיקפים מינימליים (`drive.file`, `calendar`); שרת ה-API והמפתח מוזנים ע"י המשתמש ונשמרים ב-`storage`.
 - אין קוד מרוחק: כל הספריות (jsPDF, JSZip) ארוזות בתוסף.
 
-פירוט מלא: [PRIVACY_POLICY.md](PRIVACY_POLICY.md) · [REVIEWER_NOTES.md](REVIEWER_NOTES.md) (תרשים זרימת נתונים).
+פירוט: [PRIVACY_POLICY.md](PRIVACY_POLICY.md) · [SECURITY.md](SECURITY.md) · [תרשים זרימת נתונים](docs/chrome-web-store/REVIEWER_NOTES.md).
 
-## התקנה לפיתוח (Load unpacked)
+## מבנה הריפו
 
 ```
-git clone https://github.com/zomer-g/letz-hamishpat-extension.git
+chrome/        קוד תוסף הכרום (מקור האמת לפיצ'רים החדשים)
+firefox/       פורט הפיירפוקס (AMO)
+chrome-lite/   וריאנט ארכיוני, לא מתוחזק
+docs/
+├── screenshots/       צילומי מסך ממותגים (1280×800, משמשים לשתי החנויות)
+├── chrome-web-store/  טקסטי רישום + הערות לבוחן של CWS
+├── firefox-amo/       מדריך העלאה ל-AMO, הגדרת OAuth לפיירפוקס, טקסטי רישום
+├── testing/           צ'קליסט רגרסיה + תוכניות בדיקה
+└── site/              נוסחי עמודי האתר (בית / פרטיות / תנאים)
 ```
-1. `chrome://extensions` → הפעלת **מצב מפתח**.
-2. **טעינת תוספת לא ארוזה** → בחירת תיקיית הריפו.
-3. כניסה לנט המשפט כרגיל (כרטיס חכם / הזדהות ממשלתית / הפורטל הציבורי).
 
-> ⚠️ אין להשאיר את גרסת החנות מותקנת לצד העותק המקומי — שני עותקים חולקים מצב עמוד ומשבשים זה את זה ([TESTING.md](TESTING.md)).
-
-## פיתוח ובדיקות
+## פיתוח
 
 ```bash
-npm ci          # מתקין את jsdom (תלות פיתוח יחידה)
-npm test        # ‏270+ בדיקות jsdom, ללא רשת
+cd chrome
+npm ci          # jsdom — תלות הפיתוח היחידה
+npm test        # 270+ בדיקות jsdom, ללא רשת
 npm run build   # אורז dist/extension-v<version>.zip לחנות
 ```
 
-- **בדיקות רגרסיה**: כל גרסה נבדקת גם ביחידות (jsdom) וגם חי — על שני הדומיינים (ציבורי + מאובטח) ובשתי התצורות. צ'קליסט: [TESTING.md](TESTING.md), תכנית מלאה: [TEST_PLAN.md](TEST_PLAN.md).
-- **מבנה הקוד**: `content/` סקריפטי תוכן (פאנלים, אוספים, יומן), `shared/` עזרים (CSV/ICS/ZIP/פרסור), `background/` service worker (יעדים אופציונליים בלבד), `vendor/` ספריות ארוזות.
+בנייה לפיירפוקס: `cd firefox && node build-zip.js` → `dist/firefox-extension-v<version>.zip`.
 
-```
-manifest.json                  # MV3 · activeTab, storage, identity
-content/
-├── list-panel.js              # פאנל המסמכים (AG-Grid → בחירה → ZIP)
-├── hearings-panel.js          # פאנל הדיונים (CSV/ICS/סנכרון)
-├── judge-runner.js            # מכונת מצבים לאיסוף יומן שופט בטאב ייעודי
-├── judge-calendar.js          # תצוגת היומן (יום/4 ימים/שבוע/חודש)
-├── case-open.js · favorites.js · case-judge-chip.js
-└── adapters/                  # קריאת ה-DOM/ArrayStore של נט המשפט
-shared/  background/  popup/  options/  tests/
-```
+**התקנה לפיתוח:** בכרום `chrome://extensions` → מצב מפתח → "טעינת תוספת לא ארוזה" →
+בחירת התיקייה `chrome/`. בפיירפוקס `about:debugging` → "Load Temporary Add-on" →
+בחירת `firefox/manifest.json`.
+
+> ⚠️ אין להשאיר את גרסת החנות מותקנת לצד העותק המקומי — שני עותקים חולקים מצב עמוד
+> ומשבשים זה את זה. פירוט: [docs/testing/TESTING.md](docs/testing/TESTING.md).
+
+**בדיקות רגרסיה:** כל גרסה נבדקת ביחידות (jsdom) וגם חי — על שני הדומיינים
+(הציבורי + המאובטח) ובשתי תצורות התצוגה.
 
 ## English (in brief)
 
-**Letz HaMishpat** ("The Court Jester") is an MV3 Chrome extension that adds power tools to Israel's *Net HaMishpat* court portal: bulk document download (ZIP + CSV index, PDFs built client-side), hearing-list export (CSV/ICS/Google Calendar), an interactive judge-docket calendar, instant case locate, and local favorites. Everything runs client-side inside the user's own authenticated session; optional Drive/Calendar/API destinations are user-configured. No remote code, no extension server, no data collection. `npm ci && npm test` runs the offline jsdom suite.
+**Letz HaMishpat** ("The Court Jester") is an MV3 browser extension that adds power
+tools to Israel's *Net HaMishpat* court portal: bulk document download (ZIP + CSV
+index, PDFs built client-side), hearing-list export (CSV/ICS/Google Calendar), an
+interactive judge-docket calendar, instant case locate, and local favorites.
+Everything runs client-side inside the user's own authenticated session; optional
+Drive/Calendar/API destinations are user-configured. No remote code, no extension
+server, no data collection.
+
+The repo holds both browser builds side by side — `chrome/` (0.18.37, published)
+and `firefox/` (0.17.15, AMO-ready). `cd chrome && npm ci && npm test` runs the
+offline jsdom suite. See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ## רישיון
 

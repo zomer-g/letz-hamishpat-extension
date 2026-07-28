@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extension_name__",
+  "description": "__MSG_extension_description__",
+  "default_locale": "he",
+  "version": "0.17.15",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "court-downloader@z-g.co.il",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://securesso.court.gov.il/*",
+    "https://www.court.gov.il/*",
+    "https://www.googleapis.com/*",
+    "https://accounts.google.com/*"
+  ],
+  "background": {
+    "scripts": [
+      "background/service-worker.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://securesso.court.gov.il/Ngcs.Web.Secured/*",
+        "https://www.court.gov.il/*"
+      ],
+      "js": [
+        "vendor/jszip.min.js",
+        "vendor/jspdf.umd.min.js",
+        "shared/constants.js",
+        "shared/settings.js",
+        "shared/csv.js",
+        "shared/ics-builder.js",
+        "shared/datepicker.js",
+        "content/adapters/net-court.js",
+        "content/adapters/net-court-hearings.js",
+        "content/judge-calendar.js",
+        "content/list-panel.js",
+        "content/hearings-panel.js",
+        "content/header-sync.js"
+      ],
+      "css": [
+        "content/toolbar.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "__MSG_extension_name__",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}
