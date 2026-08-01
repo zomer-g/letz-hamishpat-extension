@@ -19,7 +19,25 @@
   const ALLOWED_HOST = 'securesso.court.gov.il'; // primary
   const FILENAME_SANITIZE_RE = /[\\/:*?"<>|\r\n\t]/g;
 
+  // The ASP.NET application root of whichever portal we're on: "/NGCS.Web.Site"
+  // on the public site, "/Ngcs.Web.Secured" on the authenticated ones. The same
+  // endpoints exist under both roots — but asking the public host for a secured
+  // path is answered by the site's WAF with a "חסימת בקשה לא מורשית" HTML page,
+  // which the downloader used to read as "the court is throttling us" and back
+  // off for minutes without ever fetching a document. Always build portal URLs
+  // from here (pass a URL when resolving for a page other than this one).
+  function appRoot(href) {
+    let path;
+    try {
+      path = href ? new URL(href, root.location && root.location.href).pathname
+                  : (root.location ? root.location.pathname : '');
+    } catch (e) { path = ''; }
+    const seg = (String(path).split('/')[1] || '').trim();
+    return seg ? '/' + seg : '/Ngcs.Web.Secured';
+  }
+
   root.CD = root.CD || {};
+  root.CD.appRoot = appRoot;
   root.CD.MSG = MSG;
   root.CD.DEFAULTS = DEFAULTS;
   root.CD.ALLOWED_HOST = ALLOWED_HOST;

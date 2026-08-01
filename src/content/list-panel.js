@@ -1059,16 +1059,26 @@
   }
 
   async function fetchAllImages(dn) {
-    // Derive the secured-path prefix from the current URL so the case matches
-    // the host: "Ngcs.Web.Secured" on securesso, "NGCS.Web.Secured" on secure.
-    const base = (location.pathname.match(/^(\/[^/]+\.web\.secured)/i) || [null, '/Ngcs.Web.Secured'])[1];
+    // The viewer endpoint lives under the CURRENT portal's application root —
+    // "/NGCS.Web.Site" on the public site, "/Ngcs.Web.Secured" on the
+    // authenticated ones. Matching only *.web.secured sent every public-portal
+    // request to a path that host doesn't serve; its WAF answered with a block
+    // page, so no document was ever fetched and the run fell into the cleanup
+    // cooldown as if the court had throttled us.
+    const base = (CD.appRoot && CD.appRoot()) || '/Ngcs.Web.Secured';
     const res = await fetch(base + '/Viewer/NGCSViewerPage.aspx/GetAllImages', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({ documentNumber: dn, startPage: 1 }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    let d = (await res.json()).d;
+    // A 200 that isn't JSON means the site answered with a page, not the viewer
+    // API — say so, instead of letting it look like an ordinary failure.
+    const text = await res.text();
+    if (!/^\s*[{[]/.test(text)) {
+      throw new Error(/חסימת בקשה|Request Rejected/i.test(text) ? 'REQUEST_BLOCKED' : 'NOT_JSON');
+    }
+    let d = JSON.parse(text).d;
     if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) {} }
     if (typeof d === 'number') throw new Error('קוד שרת ' + d);
     return Array.isArray(d) ? d : [];

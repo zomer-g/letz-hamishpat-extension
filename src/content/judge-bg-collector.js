@@ -260,7 +260,13 @@
   }
 
   // ---------- acquiring the report page (case-page flow) ----------
-  const SECURED_REPORT_PATH = '/Ngcs.Web.Secured/Calendar/CalendarSittingJudge.aspx';
+  // Built from the portal's own application root — a secured path requested
+  // from the public host is answered by its WAF with a block page, which both
+  // wastes the request and counts against us.
+  function reportPath(href) {
+    const root = (w.CD && w.CD.appRoot) ? w.CD.appRoot(href) : '/Ngcs.Web.Secured';
+    return root + '/Calendar/CalendarSittingJudge.aspx';
+  }
 
   // Menu link to "דיונים לשופט ליום דיונים" (btnJudgeDiscussion) on the
   // current page, if present — used when a direct GET doesn't land.
@@ -295,7 +301,7 @@
     // 1) Direct GET of the secured report page.
     if (origin) {
       try {
-        const r = await fetchDoc(origin + SECURED_REPORT_PATH);
+        const r = await fetchDoc(origin + reportPath(baseUrl));
         if (looksLikeReportPage(r.doc)) return r;
         dbg('direct GET did not land on the report page');
       } catch (e) { dbg('direct GET failed', e); }

@@ -70,6 +70,47 @@ function run(t) {
     }
     t.eq('every download anchor is attached first', offenders.join(', '), '');
   }
+
+  // The same endpoint exists under each portal's own application root. Asking
+  // the public host for a secured path is answered by the site's WAF with
+  // "חסימת בקשה לא מורשית" — verified live — which the downloader read as the
+  // court throttling it, so it waited out a cooldown having fetched nothing.
+  t.section('portal root: derived from the page, not assumed to be secured');
+  {
+    const { loadScripts } = require('./helpers/env.js');
+    const cases = [
+      ['public decisions list', 'https://www.court.gov.il/NGCS.Web.Site/Decisions/DecisionList.aspx', '/NGCS.Web.Site'],
+      ['securesso case page', 'https://securesso.court.gov.il/Ngcs.Web.Secured/Decision/DecisionList.aspx', '/Ngcs.Web.Secured'],
+      ['secure (smart card)', 'https://secure.court.gov.il/NGCS.Web.Secured/CaseFile/PresentDocument.aspx', '/NGCS.Web.Secured'],
+    ];
+    for (const [label, url, expected] of cases) {
+      const env = loadScripts('<!DOCTYPE html><html><body></body></html>', { url, scripts: ['shared/constants.js'] });
+      t.eq(label, env.window.CD.appRoot(), expected);
+    }
+    const env = loadScripts('<!DOCTYPE html><html><body></body></html>', {
+      url: 'https://www.court.gov.il/NGCS.Web.Site/HomePage.aspx', scripts: ['shared/constants.js'],
+    });
+    t.eq('resolves for another page too',
+      env.window.CD.appRoot('https://securesso.court.gov.il/Ngcs.Web.Secured/PersonalAreaPage.aspx'), '/Ngcs.Web.Secured');
+
+    // Regression guard: nothing may hard-code a secured path into a request.
+    const fs = require('fs');
+    const path = require('path');
+    const { EXT_ROOT } = require('./helpers/env.js');
+    const dir = path.join(EXT_ROOT, 'content');
+    const offenders = [];
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.js')) continue;
+      fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach((line, i) => {
+        if (/^\s*(\/\/|\*)/.test(line)) return;                        // comments describe them freely
+        if (/['"]\/[Nn][Gg][Cc][Ss]\.[Ww]eb\.[Ss]ecured\//.test(line) &&
+            !/HomePage\.aspx|PersonalAreaPage\.aspx/.test(line)) {     // login-only screens are secured by nature
+          offenders.push(f + ':' + (i + 1));
+        }
+      });
+    }
+    t.eq('no hard-coded secured request paths', offenders.join(', '), '');
+  }
 }
 
 module.exports = { run };
