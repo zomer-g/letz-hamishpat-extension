@@ -63,13 +63,24 @@
   // A query already in flight when this page started loading → cover it.
   // Two producers: a single quick search (content/case-open.js) and a bulk run
   // over a pasted list (content/ext-bulk.js), which writes its own progress line.
-  try {
-    const bulk = sessionStorage.getItem('cd_bulk_veil');
-    if (bulk) {
-      show(bulk + '…');
-    } else {
+  function pendingText() {
+    try {
+      const bulk = sessionStorage.getItem('cd_bulk_veil');
+      if (bulk) return bulk + '…';
       const q = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-      if (q && q.num && (!q.at || Date.now() - q.at < 90000)) show('מחפש תיק מקור ' + q.num + '…');
-    }
-  } catch (e) {}
+      if (q && q.num && (!q.at || Date.now() - q.at < 90000)) return 'מחפש תיק מקור ' + q.num + '…';
+    } catch (e) {}
+    return null;
+  }
+  // At document_start Firefox can run us before <html> even exists (Chrome
+  // normally has it by then), and without a root element there is nothing to
+  // attach the veil to. Try again on the next ticks, then once the DOM is
+  // ready — worst case the veil appears a frame late instead of never.
+  (function raise(tries) {
+    const text = pendingText();
+    if (!text) return;
+    if (document.documentElement) { show(text); return; }
+    if (tries > 0) { setTimeout(() => raise(tries - 1), 0); return; }
+    document.addEventListener('DOMContentLoaded', () => { const t = pendingText(); if (t) show(t); });
+  })(20);
 })(typeof window !== 'undefined' ? window : self);

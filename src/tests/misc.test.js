@@ -48,6 +48,28 @@ function run(t) {
       .filter((f) => /=\s*w\.(JSZip|jspdf|jsPDF)\b/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
     t.eq('no direct window.<lib> reads left', offenders.join(', '), '');
   }
+
+  // Firefox does not run the default action for a click on an element that is
+  // not in the document, so a download anchor must be appended before it is
+  // clicked. Chrome does it either way, which is how a detached one slips in.
+  t.section('downloads: the anchor is in the document before it is clicked');
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const { EXT_ROOT } = require('./helpers/env.js');
+    const offenders = [];
+    for (const dir of ['content', 'popup', 'options', 'about']) {
+      const abs = path.join(EXT_ROOT, dir);
+      if (!fs.existsSync(abs)) continue;
+      for (const f of fs.readdirSync(abs)) {
+        if (!f.endsWith('.js')) continue;
+        const src = fs.readFileSync(path.join(abs, f), 'utf8');
+        if (!/\.download\s*=/.test(src)) continue;              // no download anchor here
+        if (!/appendChild\(a\)/.test(src)) offenders.push(dir + '/' + f);
+      }
+    }
+    t.eq('every download anchor is attached first', offenders.join(', '), '');
+  }
 }
 
 module.exports = { run };

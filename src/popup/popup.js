@@ -581,19 +581,47 @@ if (typeof browser !== 'undefined' && browser !== globalThis.chrome) {
     }));
   }
   const copyBtn = $('bulk-copy'), csvBtn = $('bulk-csv'), clearBtn = $('bulk-clear');
+  // Clipboard, with a fallback: the async Clipboard API needs a secure context
+  // and transient user activation, and browsers disagree about when an
+  // extension popup has both. execCommand('copy') on a temporary textarea is
+  // the universally supported path.
+  function copyText(text) {
+    function legacy() {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      st(ok ? '✓ הועתק' : 'ההעתקה נכשלה.', ok ? 'ok' : 'err');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => st('✓ הועתק', 'ok'), legacy);
+    } else legacy();
+  }
   if (copyBtn) copyBtn.addEventListener('click', () => {
-    const text = [HEADERS.join('\t')]
-      .concat(tableRows().map((r) => HEADERS.map((h) => r[h] || '').join('\t'))).join('\n');
-    navigator.clipboard.writeText(text).then(() => st('✓ הועתק', 'ok'), () => st('ההעתקה נכשלה.', 'err'));
+    copyText([HEADERS.join('\t')]
+      .concat(tableRows().map((r) => HEADERS.map((h) => r[h] || '').join('\t'))).join('\n'));
   });
   if (csvBtn) csvBtn.addEventListener('click', () => {
     const csv = window.CD.buildCsv(HEADERS, tableRows());
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    // Same shape as saveBlob() in the content scripts: the anchor MUST be in
+    // the document before it's clicked — Firefox ignores a click on a detached
+    // element, so a download triggered this way silently does nothing there.
     const a = document.createElement('a');
     a.href = url;
     a.download = 'תיקי-מקור.csv';
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setTimeout(() => {
+      try { document.body.removeChild(a); } catch (e) {}
+      URL.revokeObjectURL(url);
+    }, 4000);
   });
   if (clearBtn) clearBtn.addEventListener('click', () => {
     chrome.storage.local.remove(JOB_KEY, () => { job = null; render(); });
