@@ -25,8 +25,12 @@
 
   const CD = w.CD || {};
   const adapter = CD.adapters && CD.adapters['net-court'];
-  const JSZip = w.JSZip;
-  const JsPDF = (w.jspdf && w.jspdf.jsPDF) || w.jsPDF;
+  // Via the shim, not off `window` — on Firefox jsPDF lands on the content
+  // script's sandbox global instead (see shared/browser-compat.js).
+  const vendor = CD.vendorGlobal || ((n) => w[n]);
+  const JSZip = vendor('JSZip');
+  const jspdfNs = vendor('jspdf');
+  const JsPDF = (jspdfNs && jspdfNs.jsPDF) || vendor('jsPDF');
 
   if (!adapter) return;
   if (!adapter.matches(location, document)) return;

@@ -15,7 +15,7 @@
   if (/\/Viewer\/NGCSViewerPage\.aspx/i.test(location.pathname)) return;
 
   const CD = w.CD || {};
-  const JSZip = w.JSZip;
+  const JSZip = (CD.vendorGlobal || ((n) => w[n]))('JSZip');
   if (!(CD.judgeBg && CD.judgeBg.collectFromCase)) return;
   // Case pages live only on the secured portals.
   if (!/^https:\/\/(securesso|secure)\.court\.gov\.il$/i.test(location.origin)) return;

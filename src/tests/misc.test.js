@@ -17,6 +17,37 @@ function run(t) {
   t.eq('2 pages unchanged', defenseSlice(['a', 'b'], true).length, 2);
   t.eq('1 page unchanged', defenseSlice(['a'], true).length, 1);
   t.eq('defense off → full', defenseSlice(['a', 'b', 'c'], false).length, 3);
+
+  // ── Firefox: where a vendored UMD library lands ───────────────────────────
+  // In a Chrome content script `this` / `globalThis` / `window` are one and the
+  // same object, so it makes no difference which a bundle attaches itself to.
+  // In Firefox they are NOT: jszip.min.js picks `window`, jspdf.umd.min.js picks
+  // the top-level `this` — the extension's sandbox — so `window.jspdf` stays
+  // undefined and the PDF/ZIP download bailed out with "ספריות הקובץ לא נטענו".
+  // Vendored globals must be resolved through the shim, which looks in both.
+  t.section('vendor globals: resolved through the compat shim, not off window');
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const { loadScripts, EXT_ROOT } = require('./helpers/env.js');
+    const env = loadScripts('<!DOCTYPE html><html><body></body></html>', {
+      url: 'https://www.court.gov.il/NGCS.Web.Site/HomePage.aspx',
+      scripts: ['shared/browser-compat.js'],
+    });
+    const CD = env.window.CD;
+    t.ok('the shim exposes a resolver', typeof CD.vendorGlobal === 'function');
+    t.eq('unknown library → null', CD.vendorGlobal('NoSuchLib'), null);
+    env.window.JSZip = { tag: 'zip' };
+    t.eq('finds a library attached to window', CD.vendorGlobal('JSZip').tag, 'zip');
+
+    // The regression guard: no content script may read a vendored library off
+    // `window` alone again — that is precisely what broke the Firefox build.
+    const dir = path.join(EXT_ROOT, 'content');
+    const offenders = fs.readdirSync(dir)
+      .filter((f) => f.endsWith('.js'))
+      .filter((f) => /=\s*w\.(JSZip|jspdf|jsPDF)\b/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+    t.eq('no direct window.<lib> reads left', offenders.join(', '), '');
+  }
 }
 
 module.exports = { run };

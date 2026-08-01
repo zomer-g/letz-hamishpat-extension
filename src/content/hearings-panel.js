@@ -32,7 +32,7 @@
 
   const CD = w.CD || {};
   const adapter = CD.adapters && CD.adapters['net-court-hearings'];
-  const JSZip = w.JSZip;
+  const JSZip = (CD.vendorGlobal || ((n) => w[n]))('JSZip');
   const MAX_RANGE_DAYS = 92; // judge day-by-day collection cap (also bounds the pickers)
 
   if (!adapter) return;

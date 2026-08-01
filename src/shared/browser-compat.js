@@ -14,3 +14,25 @@
     try { globalThis.chrome = globalThis.browser; } catch (e) {}
   }
 })();
+
+// Second seam: where a vendored UMD library ends up.
+//
+// In a Chrome content script the top-level `this` and `globalThis` ARE `window`,
+// so it makes no difference which one a bundle attaches itself to. In a Firefox
+// content script they are different objects — `globalThis` is the extension's
+// sandbox, `window` is the page window seen through an Xray wrapper — and our
+// two vendored bundles disagree:
+//
+//   jszip.min.js       ("undefined"!=typeof window?window:…).JSZip = …   → window
+//   jspdf.umd.min.js   e((t=t||self).jspdf={})}(this, …)                 → sandbox
+//
+// So on Firefox `window.jspdf` is undefined and the PDF/ZIP download path bails
+// out with "ספריות הקובץ לא נטענו", while ZIP-only features work. Read vendored
+// globals through here instead of off `window`, and both browsers behave alike.
+(function (w) {
+  const CD = w.CD || (w.CD = {});
+  const g = (typeof globalThis !== 'undefined') ? globalThis : w;
+  CD.vendorGlobal = function (name) {
+    return w[name] || g[name] || null;
+  };
+})(typeof window !== 'undefined' ? window : self);
