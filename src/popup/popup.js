@@ -361,27 +361,31 @@ if (typeof browser !== 'undefined' && browser !== globalThis.chrome) {
   const $ = (id) => document.getElementById(id);
   const tabs = {
     documents: $('tab-documents'), hearings: $('tab-hearings'),
-    calendar: $('tab-calendar'), advanced: $('tab-advanced'),
+    calendar: $('tab-calendar'), bulk: $('tab-bulk'), advanced: $('tab-advanced'),
   };
   const views = {
-    profile: $('pu-view-profile'), calendar: $('pu-view-calendar'), advanced: $('pu-view-advanced'),
+    profile: $('pu-view-profile'), calendar: $('pu-view-calendar'),
+    bulk: $('pu-view-bulk'), advanced: $('pu-view-advanced'),
   };
   if (!tabs.advanced || !views.advanced) return;
 
-  // documents & hearings share the profile view; calendar & advanced each own one.
+  // documents & hearings share the profile view; the rest each own one.
   function show(which) {
     const isProfile = which === 'documents' || which === 'hearings';
     views.profile.hidden = !isProfile;
     views.calendar.hidden = which !== 'calendar';
+    if (views.bulk) views.bulk.hidden = which !== 'bulk';
     views.advanced.hidden = which !== 'advanced';
     tabs.documents.classList.toggle('pu-tab--active', which === 'documents');
     tabs.hearings.classList.toggle('pu-tab--active', which === 'hearings');
     tabs.calendar.classList.toggle('pu-tab--active', which === 'calendar');
+    if (tabs.bulk) tabs.bulk.classList.toggle('pu-tab--active', which === 'bulk');
     tabs.advanced.classList.toggle('pu-tab--active', which === 'advanced');
   }
   tabs.documents.addEventListener('click', () => show('documents'));
   tabs.hearings.addEventListener('click', () => show('hearings'));
   tabs.calendar.addEventListener('click', () => show('calendar'));
+  if (tabs.bulk) tabs.bulk.addEventListener('click', () => show('bulk'));
   tabs.advanced.addEventListener('click', () => show('advanced'));
 
   // Appearance controls (mirror the options "מראה" card) → settings.ui.
@@ -406,9 +410,23 @@ if (typeof browser !== 'undefined' && browser !== globalThis.chrome) {
 // tab's content script to fill the site's locator bar and click "אתר".
 (function () {
   const input = document.getElementById('qo-input');
+  const type = document.getElementById('qo-type');
   const go = document.getElementById('qo-go');
   const status = document.getElementById('qo-status');
   if (!input || !go) return;
+  const NUMBER_PLACEHOLDER = input.placeholder;
+  // Same closed "סוג תיק מקור" list the in-page panel offers.
+  if (type && window.CD && window.CD.EXTERNAL_CASE_TYPES) {
+    window.CD.EXTERNAL_CASE_TYPES.forEach((t) => {
+      const o = document.createElement('option');
+      o.value = t.id; o.textContent = t.label;
+      type.appendChild(o);
+    });
+    type.addEventListener('change', () => {
+      input.placeholder = type.value ? 'מספר תיק מקור' : NUMBER_PLACEHOLDER;
+      type.classList.toggle('is-picked', !!type.value);
+    });
+  }
   function st(text, cls) {
     if (!status) return;
     status.hidden = !text;
@@ -418,18 +436,24 @@ if (typeof browser !== 'undefined' && browser !== globalThis.chrome) {
   function run() {
     const text = (input.value || '').trim();
     if (!text) { input.focus(); return; }
-    const parts = window.CD && window.CD.parseCaseLocator ? window.CD.parseCaseLocator(text) : null;
-    if (!parts) { st('מספר תיק לא תקין. דוגמה: 39163-07-22', 'err'); return; }
-    st('פותח תיק ' + parts.canonical + '…', 'muted');
+    const externalType = type ? type.value : '';
+    let parts = null;
+    if (!externalType) {
+      parts = window.CD && window.CD.parseCaseLocator ? window.CD.parseCaseLocator(text) : null;
+      if (!parts) { st('מספר תיק לא תקין. דוגמה: 39163-07-22', 'err'); return; }
+    }
+    st(externalType ? 'מחפש תיק מקור ' + text + '…' : 'פותח תיק ' + parts.canonical + '…', 'muted');
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs && tabs[0];
       if (!tab || !tab.id) { st('לא נמצאה לשונית פעילה.', 'err'); return; }
       const url = tab.url || '';
-      if (url && !/securesso\.court\.gov\.il/i.test(url)) {
+      // Both Net HaMishpat domains — the public portal carries the same locator
+      // bar and the same "תיקים לפי מס' תיק מקור" screen as the secured one.
+      if (url && !/^https:\/\/([a-z0-9-]+\.)*court\.gov\.il\//i.test(url)) {
         st('פתח/י תחילה עמוד בנט המשפט ואז נסה/י שוב.', 'err');
         return;
       }
-      chrome.tabs.sendMessage(tab.id, { type: 'cd/quickOpenCase', text: text }, (resp) => {
+      chrome.tabs.sendMessage(tab.id, { type: 'cd/quickOpenCase', text: text, externalType: externalType }, (resp) => {
         if (chrome.runtime.lastError) { st('רענן/י את עמוד נט המשפט (F5) ונסה/י שוב.', 'err'); return; }
         if (resp && resp.ok) window.close();       // the tab navigates to the case
         else st((resp && resp.error) || 'האיתור נכשל.', 'err');
@@ -438,4 +462,140 @@ if (typeof browser !== 'undefined' && browser !== globalThis.chrome) {
   }
   go.addEventListener('click', run);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+})();
+
+// ── "תיקי מקור" tab: paste a list of source-case numbers (פל"א and friends) ──
+// and get one row per court case found. The search itself can only be done by
+// walking the portal's own screen, so the work happens in the open Net HaMishpat
+// tab (content/ext-bulk.js) and the job + results live in chrome.storage.local —
+// which is why closing this popup doesn't interrupt anything.
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const typeSel = $('bulk-type'), input = $('bulk-input'), runBtn = $('bulk-run');
+  const stopBtn = $('bulk-stop'), status = $('bulk-status');
+  const card = $('bulk-results-card'), tbody = $('bulk-table') && $('bulk-table').querySelector('tbody');
+  const count = $('bulk-count');
+  if (!typeSel || !input || !runBtn) return;
+  const JOB_KEY = 'cd_bulk_job';
+  let job = null;
+
+  (window.CD.EXTERNAL_CASE_TYPES || []).forEach((t) => {
+    const o = document.createElement('option');
+    o.value = t.id; o.textContent = t.label;
+    typeSel.appendChild(o);
+  });
+  typeSel.value = '2';   // תיק משטרתי (פל"א) — what this is overwhelmingly used for
+
+  function st(text, cls) {
+    if (!status) return;
+    status.textContent = text || '';
+    status.className = 'pu-status' + (cls ? ' ' + cls : '');
+  }
+  // One token per line / comma / semicolon. Slashes are part of the number, so
+  // they are never treated as separators.
+  function parseNumbers(text) {
+    const seen = new Set();
+    return String(text || '').split(/[\r\n,;\t]+/)
+      .map((s) => s.trim())
+      .filter((s) => s && !seen.has(s) && seen.add(s));
+  }
+
+  function render() {
+    const rows = (job && job.rows) || [];
+    if (card) card.hidden = !rows.length;
+    if (count) count.textContent = rows.filter((r) => r.caseNumber).length + ' תיקים';
+    if (tbody) {
+      tbody.textContent = '';
+      rows.forEach((r) => {
+        const tr = document.createElement('tr');
+        [r.source, r.caseType, r.caseNumber, r.court, r.status].forEach((v) => {
+          const td = document.createElement('td');
+          td.textContent = v || '';
+          tr.appendChild(td);
+        });
+        if (!r.caseNumber) tr.className = 'is-empty';
+        tbody.appendChild(tr);
+      });
+    }
+    const running = job && job.state === 'running';
+    runBtn.disabled = !!running;
+    if (stopBtn) stopBtn.hidden = !running;
+    if (!job) st('');
+    else if (running) st('מריץ ' + job.doneCount + ' מתוך ' + job.total + '…', 'muted');
+    else if (job.state === 'done') st('✓ הסתיים — ' + job.total + ' תיקי מקור', 'ok');
+    else if (job.state === 'stopped') st('ההרצה נעצרה (' + job.doneCount + ' מתוך ' + job.total + ')');
+    else if (job.state === 'error') st(job.error || 'ההרצה נכשלה.', 'err');
+  }
+
+  function load() {
+    chrome.storage.local.get(JOB_KEY, (out) => { job = (out && out[JOB_KEY]) || null; render(); });
+  }
+  load();
+  chrome.storage.onChanged.addListener((ch, area) => {
+    if (area === 'local' && ch[JOB_KEY]) { job = ch[JOB_KEY].newValue || null; render(); }
+  });
+
+  runBtn.addEventListener('click', () => {
+    const numbers = parseNumbers(input.value);
+    if (!numbers.length) { st('הדבק/י לפחות מספר תיק מקור אחד.', 'err'); input.focus(); return; }
+    const t = window.CD.externalCaseType(typeSel.value);
+    if (!t) { st('בחר/י סוג תיק מקור.', 'err'); return; }
+    const fresh = {
+      token: 'b' + Math.random().toString(36).slice(2) + Date.now().toString(36),
+      type: t.id, typeLabel: t.label,
+      queue: numbers.slice(1), current: numbers[0], phase: 'number',
+      rows: [], total: numbers.length, doneCount: 0,
+      state: 'running', at: Date.now(),
+    };
+    chrome.tabs.query({ active: true, currentWindow: true }, (tp) => {
+      const tab = tp && tp[0];
+      if (!tab || !tab.id || !/^https:\/\/([a-z0-9-]+\.)*court\.gov\.il\//i.test(tab.url || '')) {
+        st('פתח/י תחילה עמוד בנט המשפט בלשונית הפעילה.', 'err');
+        return;
+      }
+      st('מתחיל…', 'muted');
+      chrome.tabs.sendMessage(tab.id, { type: 'cd/bulkStart', job: fresh }, (resp) => {
+        if (chrome.runtime.lastError) { st('רענן/י את עמוד נט המשפט (F5) ונסה/י שוב.', 'err'); return; }
+        if (!resp || !resp.ok) st((resp && resp.error) || 'ההרצה לא התחילה.', 'err');
+      });
+    });
+  });
+
+  if (stopBtn) stopBtn.addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tp) => {
+      const tab = tp && tp[0];
+      if (tab && tab.id) chrome.tabs.sendMessage(tab.id, { type: 'cd/bulkStop' }, () => void chrome.runtime.lastError);
+      // The tab may be gone or on another site — stop the job from here too.
+      chrome.storage.local.get(JOB_KEY, (out) => {
+        const j = out && out[JOB_KEY];
+        if (j && j.state === 'running') chrome.storage.local.set({ [JOB_KEY]: Object.assign(j, { state: 'stopped' }) });
+      });
+    });
+  });
+
+  const HEADERS = ['תיק מקור', 'סוג תיק', 'מספר תיק', 'שם התיק', 'בעניין', 'בית משפט', 'מצב'];
+  function tableRows() {
+    return ((job && job.rows) || []).map((r) => ({
+      'תיק מקור': r.source, 'סוג תיק': r.caseType, 'מספר תיק': r.caseNumber,
+      'שם התיק': r.caseName, 'בעניין': r.interest, 'בית משפט': r.court, 'מצב': r.status,
+    }));
+  }
+  const copyBtn = $('bulk-copy'), csvBtn = $('bulk-csv'), clearBtn = $('bulk-clear');
+  if (copyBtn) copyBtn.addEventListener('click', () => {
+    const text = [HEADERS.join('\t')]
+      .concat(tableRows().map((r) => HEADERS.map((h) => r[h] || '').join('\t'))).join('\n');
+    navigator.clipboard.writeText(text).then(() => st('✓ הועתק', 'ok'), () => st('ההעתקה נכשלה.', 'err'));
+  });
+  if (csvBtn) csvBtn.addEventListener('click', () => {
+    const csv = window.CD.buildCsv(HEADERS, tableRows());
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'תיקי-מקור.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  });
+  if (clearBtn) clearBtn.addEventListener('click', () => {
+    chrome.storage.local.remove(JOB_KEY, () => { job = null; render(); });
+  });
 })();

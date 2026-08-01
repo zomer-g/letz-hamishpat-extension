@@ -3,7 +3,7 @@
   "name": "__MSG_extension_name__",
   "description": "__MSG_extension_description__",
   "default_locale": "he",
-  "version": "0.18.37",
+  "version": "0.19.0",
   "permissions": [
     "activeTab",
     "storage",
@@ -50,6 +50,7 @@
         "content/case-judge-chip.js",
         "content/header-sync.js",
         "content/case-open.js",
+        "content/ext-bulk.js",
         "content/judge-runner.js",
         "content/favorites.js"
       ],
@@ -57,6 +58,15 @@
         "content/toolbar.css"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.court.gov.il/*"
+      ],
+      "js": [
+        "content/ext-busy.js"
+      ],
+      "run_at": "document_start"
     }
   ],
   "options_page": "options/options.html",

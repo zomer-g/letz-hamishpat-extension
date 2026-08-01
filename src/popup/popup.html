@@ -15,6 +15,7 @@
   </header>
 
   <section class="pu-quickopen">
+    <select id="qo-type" title="חיפוש לפי — מספר תיק או סוג תיק מקור"><option value="">מספר תיק</option></select>
     <input type="text" id="qo-input" autocomplete="off" placeholder="איתור תיק — למשל 39163-07-22" />
     <button type="button" class="pu-btn" id="qo-go">אתר</button>
   </section>
@@ -24,6 +25,7 @@
     <button type="button" class="pu-tab pu-tab--active" id="tab-documents" data-profile="documents">מסמכים</button>
     <button type="button" class="pu-tab" id="tab-hearings" data-profile="hearings">דיונים</button>
     <button type="button" class="pu-tab" id="tab-calendar">יומן Google</button>
+    <button type="button" class="pu-tab" id="tab-bulk">תיקי מקור</button>
     <button type="button" class="pu-tab" id="tab-advanced">מתקדם</button>
   </nav>
 
@@ -134,6 +136,37 @@
     </section>
    </div><!-- /pu-view-calendar -->
 
+   <div id="pu-view-bulk" hidden>
+    <section class="pu-card">
+      <div class="pu-card__h">מתיקי מקור לתיקי בית משפט</div>
+      <label class="pu-field">סוג תיק המקור
+        <select id="bulk-type"></select>
+      </label>
+      <textarea id="bulk-input" rows="5" placeholder="הדבק/י מספרי תיק מקור — אחד בכל שורה&#10;68480/2024&#10;132178/2023"></textarea>
+      <div class="pu-row">
+        <button class="pu-btn" id="bulk-run">הרץ</button>
+        <button class="pu-btn pu-btn--ghost" id="bulk-stop" type="button">עצור</button>
+        <span class="pu-status" id="bulk-status"></span>
+      </div>
+      <div class="pu-browser__hint">ההרצה מתבצעת בלשונית נט המשפט הפתוחה — היא תעבור בין מסכי החיפוש עד לסיום. אפשר לסגור את החלונית; ההרצה נמשכת והתוצאות ייאספו כאן.</div>
+    </section>
+
+    <section class="pu-card" id="bulk-results-card" hidden>
+      <div class="pu-card__h">תוצאות <span class="pu-profile-tag" id="bulk-count"></span></div>
+      <div class="pu-bulk__scroll">
+        <table class="pu-bulk__table" id="bulk-table">
+          <thead><tr><th>תיק מקור</th><th>סוג</th><th>מספר תיק</th><th>בית משפט</th><th>מצב</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="pu-row">
+        <button class="pu-btn pu-btn--ghost" id="bulk-copy" type="button">העתק</button>
+        <button class="pu-btn pu-btn--ghost" id="bulk-csv" type="button">הורד CSV</button>
+        <button class="pu-btn pu-btn--ghost" id="bulk-clear" type="button">נקה</button>
+      </div>
+    </section>
+   </div><!-- /pu-view-bulk -->
+
    <div id="pu-view-advanced" hidden>
     <section class="pu-card">
       <div class="pu-card__h">מראה</div>
@@ -162,6 +195,7 @@
 
   <script src="../shared/settings.js"></script>
   <script src="../shared/case-locator.js"></script>
+  <script src="../shared/csv.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

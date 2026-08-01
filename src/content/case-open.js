@@ -7,6 +7,10 @@
 // fields, and click "אתר" — which the page turns into a normal postback that
 // opens the case.
 //
+// A second mode searches by "תיק מקור" (source case) instead: pick one of the
+// portal's own source-case types from the closed list and give its number — we
+// drive the site's dedicated screen for that (see submitExternal below).
+//
 // The quick-open field is offered two ways (per the user's request):
 //   • in the toolbar popup (always), which messages the active court tab, and
 //   • embedded on the page — inside the floating window (floating mode) or right
@@ -95,11 +99,285 @@
   }
   CD.caseOpenSubmit = submitText;
 
+  // ── search by "תיק מקור" (source / external case number) ─────────────────
+  // The portal has a dedicated screen for it — איתור תיקים → "תיקים לפי מס' תיק
+  // מקור" (SearchCase/CasesSearchExternalView.aspx): a closed "סוג תיק מקור"
+  // list (#ExternalCaseTypeIDDropDown), a number field (#ExternalCaseNumber) and
+  // an "אישור" postback link (#buttonsGroup_searchButton). Quick-locate drives
+  // that screen: when we're already on it we fill and submit directly; from any
+  // other page we stash the query in sessionStorage, walk the site's own menu
+  // link there (an ASP.NET postback, so the session is preserved), and replay
+  // the query once the new page boots this script again.
+  const EXT_PAGE_RE = /CasesSearchExternalView\.aspx/i;
+  const EXT_PENDING = 'cd_extsearch';   // a query waiting for the screen to load
+  const EXT_DONE = 'cd_extdone';        // a query we just submitted, for feedback
+  let extNote = null;                   // what to tell the user in the panel
+
+  function fire(el, type) {
+    try { el.dispatchEvent(new Event(type, { bubbles: true })); } catch (e) {}
+  }
+
+  // ASP.NET postback, run the way the page itself would. We CAN'T just .click()
+  // these controls: unlike the locator's "אתר" (a real <input type=submit>),
+  // both "אישור" on the source-case screen and the menu link are <a> elements
+  // whose href is a `javascript:` URL. A click from a content script runs that
+  // URL in OUR isolated world, where the page's __doPostBack /
+  // WebForm_DoPostBackWithOptions simply don't exist — the click appears to work
+  // and silently does nothing (fields filled, no search). Setting the two hidden
+  // fields and submitting the real form produces the identical request.
+  // Bonus: it skips the form's onsubmit client validation, which the server
+  // re-runs anyway.
+  // The value ASP.NET expects in __EVENTTARGET for `el`, read out of the very
+  // attribute the site itself uses: href/onclick on the buttons, onchange on the
+  // AutoPostBack fields (where the call is nested in a setTimeout string, hence
+  // the escaped quotes). Form fields fall back to their own control name, which
+  // is exactly what __doPostBack would have been handed.
+  function postbackTarget(el, fieldFallback) {
+    const src = ['href', 'onclick', 'onchange'].map((a) => el.getAttribute(a) || '').join(';');
+    const m = src.match(/__doPostBack\(\s*\\?['"]([^'"\\]+)/) ||
+              src.match(/WebForm_PostBackOptions\(\s*\\?['"]([^'"\\]+)/);
+    if (m) return m[1];
+    return fieldFallback ? (el.name || el.id || null) : null;
+  }
+  // Last resort: hand the postback to the page's OWN __doPostBack by running it
+  // in the main world. Only used if submitting the form didn't navigate.
+  function mainWorldPostback(target) {
+    try {
+      const s = document.createElement('script');
+      s.textContent = '__doPostBack(' + JSON.stringify(target) + ',"")';
+      (document.body || document.documentElement).appendChild(s);
+      s.remove();
+      return true;
+    } catch (e) { return false; }
+  }
+  // Submit `el`'s postback. Falls back to a plain click for real submit buttons
+  // (and for anything we can't parse a target out of).
+  function pressPostback(el, fieldFallback) {
+    if (!el) return false;
+    const target = postbackTarget(el, fieldFallback);
+    const evTarget = document.querySelector('input[name="__EVENTTARGET"]');
+    const evArg = document.querySelector('input[name="__EVENTARGUMENT"]');
+    const form = (evTarget && evTarget.form) || document.forms[0];
+    if (target && evTarget && form) {
+      evTarget.value = target;
+      if (evArg) evArg.value = '';
+      try {
+        form.submit();
+        // If this document is still alive later, the submit never navigated.
+        setTimeout(() => mainWorldPostback(target), 3000);
+        return true;
+      } catch (e) {}
+    }
+    try { el.click(); return true; } catch (e) {}
+    return false;
+  }
+  function extTypeSelect() {
+    return document.getElementById('ExternalCaseTypeIDDropDown') ||
+           document.querySelector('select[id$="ExternalCaseTypeIDDropDown"]');
+  }
+  function extNumberField() {
+    return document.getElementById('ExternalCaseNumber') ||
+           document.querySelector('input[id$="ExternalCaseNumber"]');
+  }
+  // The screen's "אישור" trigger — an <a> running a WebForm postback.
+  function extSearchButton() {
+    const byId = document.querySelector('#buttonsGroup_searchButton, [id$="_searchButton"]');
+    if (byId) return byId;
+    const cands = Array.prototype.slice.call(
+      document.querySelectorAll('a, button, input[type="submit"], input[type="button"]'));
+    return cands.find((e) => /^אישור$/.test((e.value || e.textContent || '').trim())) || null;
+  }
+
+  // Which option of the "סוג תיק מקור" combo `typeId` means. Match on the site's
+  // own option value first; fall back to the caption so a renumbering on their
+  // side doesn't break us (quotes/spaces are normalized away — דו"ח vs דו״ח).
+  function extTypeOptionValue(sel, typeId) {
+    const t = CD.externalCaseType ? CD.externalCaseType(typeId) : null;
+    const opts = Array.prototype.slice.call(sel.options || []);
+    const norm = (s) => String(s || '').replace(/["'״׳\s()]/g, '');
+    const opt = opts.find((o) => (o.value || '').trim() === String(typeId)) ||
+                (t && opts.find((o) => norm(o.text) === norm(t.label))) || null;
+    return opt ? opt.value : null;
+  }
+
+  function readPending() {
+    try { return JSON.parse(sessionStorage.getItem(EXT_PENDING) || 'null'); } catch (e) { return null; }
+  }
+  function writePending(q) {
+    try { sessionStorage.setItem(EXT_PENDING, JSON.stringify(q)); return true; } catch (e) { return false; }
+  }
+  function clearPending() {
+    try { sessionStorage.removeItem(EXT_PENDING); } catch (e) {}
+    if (CD.extVeilHide) CD.extVeilHide();   // nothing in flight → uncover the page
+  }
+
+  // Move the stashed query ONE step forward, then let the page reload.
+  //
+  // Both criteria fields are AutoPostBack controls —
+  //   onchange="…__doPostBack('ExternalCaseTypeIDDropDown','')"
+  //   onchange="…__doPostBack('ExternalCaseNumber','')"
+  // — and the server builds the query from those round-trips, not from whatever
+  // rides along with the final "אישור". Filling both fields and pressing אישור
+  // in one shot posts perfectly valid data and comes back with 0 results even
+  // for a case that exists (verified against a real פל"א). So we reproduce the
+  // site's own sequence: type → postback, number → postback, then אישור. Each
+  // step is a full page load, so the step is chosen from what's already on the
+  // screen rather than from a counter — restarts and stray reloads can't
+  // desynchronize it.
+  function advanceExternal() {
+    const q = readPending();
+    if (!q) return { ok: false, error: 'לא נמצאה בקשת חיפוש.' };
+    const sel = extTypeSelect();
+    const num = extNumberField();
+    const btn = extSearchButton();
+    if (!sel || !num || !btn) {
+      return { ok: false, error: 'מסך "תיקים לפי מס\' תיק מקור" עדיין לא נטען — נסה/י שוב.' };
+    }
+    const want = extTypeOptionValue(sel, q.type);
+    if (!want) { clearPending(); return { ok: false, error: 'סוג תיק המקור אינו קיים ברשימת האתר.' }; }
+    q.at = Date.now();
+    // Each field gets at most two attempts: if a value still doesn't read back
+    // (the site may normalize what we typed) we move on rather than loop.
+    if (sel.value !== want && (q.typeTries || 0) < 2) {          // step 1 — the type
+      sel.value = want;
+      q.typeTries = (q.typeTries || 0) + 1;
+      writePending(q);
+      return pressPostback(sel, true) ? { ok: true } : { ok: false, error: 'לא ניתן לעדכן את סוג תיק המקור.' };
+    }
+    if (String(num.value).trim() !== q.num && (q.numTries || 0) < 2) {  // step 2 — the number
+      num.value = q.num;
+      q.numTries = (q.numTries || 0) + 1;
+      writePending(q);
+      return pressPostback(num, true) ? { ok: true } : { ok: false, error: 'לא ניתן לעדכן את מספר תיק המקור.' };
+    }
+    // step 3 — both criteria are registered with the site: run the search.
+    clearPending();
+    // An empty result grid looks exactly like a screen that was merely filled
+    // in, so record what ran and report the count after the reload.
+    try { sessionStorage.setItem(EXT_DONE, JSON.stringify({ type: q.type, num: q.num, at: Date.now() })); } catch (e) {}
+    if (!pressPostback(btn)) {
+      try { sessionStorage.removeItem(EXT_DONE); } catch (e) {}
+      return { ok: false, error: 'לא ניתן להפעיל את החיפוש במסך זה.' };
+    }
+    return { ok: true };
+  }
+
+  // How many rows the site says it found — its pager reads "0 עד 0 מתוך 12".
+  function extResultCount() {
+    const body = document.body || null;
+    const text = (body && (body.innerText || body.textContent)) || '';
+    const m = text.replace(/\s+/g, ' ').match(/\d+\s+עד\s+\d+\s+מתוך\s+(\d+)/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+  // Read back the query we submitted before this page load and phrase the result.
+  function reportExternalResult() {
+    if (!EXT_PAGE_RE.test(location.pathname)) return;
+    let done = null;
+    try { done = JSON.parse(sessionStorage.getItem(EXT_DONE) || 'null'); } catch (e) {}
+    if (!done) return;
+    try { sessionStorage.removeItem(EXT_DONE); } catch (e) {}
+    if (done.at && Date.now() - done.at > 120000) return;
+    const t = CD.externalCaseType ? CD.externalCaseType(done.type) : null;
+    const what = (t ? t.label + ' ' : '') + done.num;
+    const n = extResultCount();
+    extNote = {
+      type: done.type,
+      num: done.num,
+      text: n === null ? 'החיפוש בוצע: ' + what
+          : n === 0 ? 'לא נמצאו תיקים עבור ' + what
+          : 'נמצאו ' + n + ' תיקים עבור ' + what,
+      ok: n === null || n > 0,
+    };
+  }
+
+  // The header menu's "תיקים לפי מס' תיק מקור" entry. Matched by control name
+  // first (stable across both domains) and by caption as a backstop.
+  function externalMenuLink() {
+    const byId = document.querySelector('a[id$="btnExternalSearchCases"], a[href*="btnExternalSearchCases"]');
+    if (byId) return byId;
+    return Array.prototype.slice.call(document.querySelectorAll('a[href*="__doPostBack"]'))
+      .find((a) => /תיק\s*מקור/.test(a.textContent || '')) || null;
+  }
+  // Same app root as the current page: /NGCS.Web.Site/… (public) or
+  // /Ngcs.Web.Secured/… (authenticated). LAST resort only — a plain GET to that
+  // screen is bounced back to the home page unless the site's own postback took
+  // us there, so we only try it when the menu link is missing entirely.
+  function externalPageUrl() {
+    const app = (location.pathname.split('/')[1] || '').trim();
+    return app ? location.origin + '/' + app + '/SearchCase/CasesSearchExternalView.aspx' : null;
+  }
+  function gotoExternalPage() {
+    const link = externalMenuLink();
+    if (link && pressPostback(link)) return true;
+    const url = externalPageUrl();
+    if (url) { location.assign(url); return true; }
+    return false;
+  }
+
+  // Public entry: search by source-case type + number, from any portal page.
+  // The query is always stashed first — it takes several page loads to play out
+  // (see advanceExternal), whether or not we start on the right screen.
+  function submitExternal(typeId, rawNum) {
+    const t = CD.externalCaseType ? CD.externalCaseType(typeId) : null;
+    if (!t) return { ok: false, error: 'בחר/י סוג תיק מקור.' };
+    const num = String(rawNum == null ? '' : rawNum).trim();
+    if (!num) return { ok: false, error: 'יש להזין מספר תיק מקור (' + t.label + ').' };
+    if (!writePending({ type: t.id, num: num, at: Date.now() })) {
+      return { ok: false, error: 'הדפדפן חוסם אחסון מקומי — לא ניתן להעביר את החיפוש.' };
+    }
+    // Cover the page for the whole sequence — the intermediate postbacks would
+    // otherwise flash a half-filled search form at the user (content/ext-busy.js
+    // re-raises the veil on each of those loads).
+    if (CD.extVeilShow) CD.extVeilShow('מחפש ' + t.label + ' ' + num + '…');
+    if (EXT_PAGE_RE.test(location.pathname)) {
+      const r = advanceExternal();
+      if (!r.ok) clearPending();
+      return r;
+    }
+    if (gotoExternalPage()) return { ok: true, navigating: true };
+    clearPending();
+    return { ok: false, error: 'לא נמצא הקישור "תיקים לפי מס\' תיק מקור" בעמוד זה.' };
+  }
+  CD.caseOpenSubmitExternal = submitExternal;
+
+  // The pieces of the source-case screen, shared with the bulk runner
+  // (content/ext-bulk.js) so the two features drive the site the same way.
+  CD.extSearchApi = {
+    onScreen: () => EXT_PAGE_RE.test(location.pathname),
+    goto: gotoExternalPage,
+    typeSelect: extTypeSelect,
+    numberField: extNumberField,
+    searchButton: extSearchButton,
+    optionValue: extTypeOptionValue,
+    press: pressPostback,
+  };
+
+  // Carry a stashed query one step further on every load of the screen, until
+  // advanceExternal runs the search and clears it.
+  function consumePendingExternal() {
+    if (!EXT_PAGE_RE.test(location.pathname)) return;
+    const q = readPending();
+    if (!q || !q.type || !q.num) return;
+    // Only follow through on a query the user just made: if a step went astray
+    // the stash must not wake up on some later, unrelated visit to this screen.
+    if (q.at && Date.now() - q.at > 90000) { clearPending(); return; }
+    let tries = 0;
+    (function attempt() {
+      if (advanceExternal().ok) return;
+      if (++tries < 8) setTimeout(attempt, 400); // the screen can render late
+      else clearPending();
+    })();
+  }
+
   // ── message from the popup ───────────────────────────────────────────────
   try {
     if (w.chrome && chrome.runtime && chrome.runtime.onMessage) {
       chrome.runtime.onMessage.addListener((msg, sender, send) => {
-        if (msg && msg.type === 'cd/quickOpenCase') { send(submitText(msg.text || '')); return true; }
+        if (msg && msg.type === 'cd/quickOpenCase') {
+          send(msg.externalType ? submitExternal(msg.externalType, msg.text || '')
+                                : submitText(msg.text || ''));
+          return true;
+        }
       });
     }
   } catch (e) {}
@@ -107,28 +385,63 @@
   // ── in-page quick-open panel ─────────────────────────────────────────────
   const PANEL_ID = 'cd-caseopen-panel';
 
+  const NUMBER_PLACEHOLDER = 'למשל 39163-07-22';
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function buildPanel() {
     const p = document.createElement('div');
     p.id = PANEL_ID;
     p.className = 'cd-panel cd-caseopen';
     p.dir = 'rtl';
+    // The "חיפוש לפי" combo keeps the default (paste a case number, as before)
+    // as its first option; the rest is the site's own closed "סוג תיק מקור" list.
+    const typeOptions = ['<option value="">מספר תיק</option>'].concat(
+      (CD.EXTERNAL_CASE_TYPES || []).map((t) =>
+        '<option value="' + esc(t.id) + '">' + esc(t.label) + '</option>')).join('');
     p.innerHTML =
       '<div class="cd-panel__bar">' +
         '<div class="cd-panel__title">🔎 איתור תיק מהיר</div>' +
-        '<input class="cd-co__input" type="text" autocomplete="off" placeholder="למשל 39163-07-22" />' +
+        '<select class="cd-co__type" title="חיפוש לפי — מספר תיק או סוג תיק מקור">' + typeOptions + '</select>' +
+        '<input class="cd-co__input" type="text" autocomplete="off" placeholder="' + NUMBER_PLACEHOLDER + '" />' +
         '<button type="button" class="cd-panel__btn cd-panel__btn--primary cd-co__go">אתר</button>' +
       '</div>' +
       '<div class="cd-co__status" hidden></div>';
+    const type = p.querySelector('.cd-co__type');
     const input = p.querySelector('.cd-co__input');
     const go = p.querySelector('.cd-co__go');
     const status = p.querySelector('.cd-co__status');
+    function say(text, ok) {
+      status.hidden = !text;
+      status.className = 'cd-co__status' + (ok ? ' ok' : '');
+      status.textContent = text || '';
+    }
+    type.addEventListener('change', () => {
+      input.placeholder = type.value ? 'מספר תיק מקור' : NUMBER_PLACEHOLDER;
+      // Collapsed to a chevron on the default mode, labelled once a type is on.
+      type.classList.toggle('is-picked', !!type.value);
+      say('');
+    });
     function run() {
-      const r = submitText(input.value);
-      if (!r.ok) { status.hidden = false; status.textContent = r.error; }
-      else { status.hidden = false; status.className = 'cd-co__status ok'; status.textContent = 'פותח…'; }
+      const kind = type.value;
+      const r = kind ? submitExternal(kind, input.value) : submitText(input.value);
+      if (!r.ok) say(r.error);
+      else say(kind ? 'מחפש תיק מקור…' : 'פותח…', true);
     }
     go.addEventListener('click', run);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+    // Carry the finished source-case search over the page load that ran it, so
+    // the panel shows what was searched and how many cases came back.
+    if (extNote) {
+      type.value = extNote.type;
+      type.classList.add('is-picked');
+      input.placeholder = 'מספר תיק מקור';
+      input.value = extNote.num;
+      say(extNote.text, extNote.ok);
+    }
     return p;
   }
 
@@ -220,6 +533,10 @@
   }
 
   function boot() {
+    // Before the panel gate: a source-case search stashed on the previous page
+    // must replay here even if the quick-locate bar can't mount on this screen.
+    reportExternalResult();   // …and a search that already ran gets reported
+    consumePendingExternal();
     if (!onCourtPage()) return;
     ensureMounted();
     // The site header (with the locator bar) can render a beat after idle, and

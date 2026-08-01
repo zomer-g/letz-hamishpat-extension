@@ -967,6 +967,28 @@ html.cd-ext-off #cd-hsync { visibility: hidden !important; }
   border: 1px solid #ffffff; border-radius: 6px;
   padding: 4px 9px; font: inherit; font-size: 12.5px; color: #111827; background: #fff;
 }
+/* "חיפוש לפי" — מספר תיק (default) or one of the "תיק מקור" types. In the
+   default state it's just a chevron: the caption would eat the row for the mode
+   nobody needs to be told about. Picking a source type widens it, so the active
+   mode stays readable. Hiding the caption is font-size:0 + transparent text on
+   the CLOSED control only — the options keep their own size, so the dropdown
+   list itself renders normally. */
+.cd-co__type {
+  flex: 0 0 auto; width: 30px; min-width: 30px; height: 26px; padding: 0;
+  -webkit-appearance: none; appearance: none;
+  border: 1px solid #ffffff; border-radius: 6px;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5l5 5 5-5' fill='none' stroke='%23044E66' stroke-width='2'/></svg>");
+  background-repeat: no-repeat; background-position: center; background-size: 11px 8px;
+  font: inherit; font-size: 0; color: transparent; cursor: pointer;
+}
+.cd-co__type option { font-size: 12.5px; color: #111827; background: #fff; }
+.cd-co__type.is-picked {
+  width: auto; min-width: 0; max-width: 170px;
+  font-size: 12.5px; color: #111827;
+  padding: 0 8px 0 20px; background-position: left 5px center;
+}
+.cd-co__type:focus { outline: none; box-shadow: 0 0 0 2px rgba(56, 174, 208, 0.35); }
 .cd-co__input::placeholder { color: #9CA3AF; }
 .cd-co__input:focus { outline: none; box-shadow: 0 0 0 2px rgba(56, 174, 208, 0.35); }
 .cd-co__status { padding: 6px 10px; font-size: 12px; color: #b91c1c; background: #ffffff; }

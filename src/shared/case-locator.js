@@ -6,6 +6,9 @@
 // with an optional leading case-type prefix, e.g. all of these parse the same:
 //   39163-07-22   39163/07/2022   39163 7 22   39163.07.22   ת"א 39163-07-22
 // Returns null when the text doesn't contain a serial + month(1-12) + year.
+//
+// Also carries the closed list of "תיק מקור" (source-case) types that the
+// portal's own external-case search screen offers — see EXTERNAL_CASE_TYPES.
 (function (root) {
   const SEP = '[\\s./\\\\-]';
   // serial · sep · month(1-2) · sep · year(2 or 4). Anchored so the year isn't
@@ -40,6 +43,34 @@
     };
   }
 
+  // ── "תיק מקור" (source / external case) types ─────────────────────────────
+  // The closed list behind the site's own screen איתור תיקים → "תיקים לפי מס'
+  // תיק מקור" (SearchCase/CasesSearchExternalView.aspx). `id` is the site's own
+  // option value in #ExternalCaseTypeIDDropDown — captured live from the portal;
+  // `label` is the caption, kept as the fallback match in case the site ever
+  // renumbers the values. Order mirrors the site's own dropdown.
+  const EXTERNAL_CASE_TYPES = Object.freeze([
+    { id: '11', label: 'בית דין מנהלי לתעבורה' },
+    { id: '7',  label: 'דו"ח עירייה' },
+    { id: '1',  label: 'דו"ח תעבורה' },
+    { id: '10', label: 'הודעת קנס' },
+    { id: '6',  label: 'כונס הנכסים הרשמי' },
+    { id: '8',  label: 'עמ"ק ישן' },
+    { id: '9',  label: 'עניינים מקומיים' },
+    { id: '3',  label: 'תיק הוצל"פ' },
+    { id: '2',  label: 'תיק משטרתי (פל"א)' },
+  ].map(Object.freeze));
+
+  // Look a type up by its id (or by its exact label). Returns null when unknown —
+  // callers treat that as "no source-case type chosen".
+  function externalCaseType(idOrLabel) {
+    if (idOrLabel == null || idOrLabel === '') return null;
+    const key = String(idOrLabel).trim();
+    return EXTERNAL_CASE_TYPES.find((t) => t.id === key || t.label === key) || null;
+  }
+
   root.CD = root.CD || {};
   root.CD.parseCaseLocator = parseCaseLocator;
+  root.CD.EXTERNAL_CASE_TYPES = EXTERNAL_CASE_TYPES;
+  root.CD.externalCaseType = externalCaseType;
 })(typeof self !== 'undefined' ? self : globalThis);

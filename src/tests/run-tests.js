@@ -17,6 +17,8 @@ const MODULES = [
   './judge-runner.test.js',
   './case-locator.test.js',
   './case-open.test.js',
+  './ext-bulk.test.js',
+  './popup-bulk.test.js',
   './favorites.test.js',
   './misc.test.js',
   './dual-build.test.js',

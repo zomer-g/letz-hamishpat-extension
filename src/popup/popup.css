@@ -159,6 +159,49 @@ body {
   font: inherit; color: var(--gs-text); background: #fff;
 }
 .pu-quickopen input:focus { outline: none; border-color: var(--gs-primary-400); box-shadow: 0 0 0 2px rgba(56, 174, 208, .25); }
+/* Chevron-only until a "תיק מקור" type is picked — same idea as the in-page
+   panel (content/toolbar.css): the default mode needs no caption. */
+.pu-quickopen select {
+  flex: 0 0 auto; width: 32px; min-width: 32px; padding: 0;
+  -webkit-appearance: none; appearance: none;
+  border: 1px solid var(--gs-border); border-radius: var(--gs-radius-sm);
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5l5 5 5-5' fill='none' stroke='%23044E66' stroke-width='2'/></svg>");
+  background-repeat: no-repeat; background-position: center; background-size: 11px 8px;
+  font: inherit; font-size: 0; color: transparent; cursor: pointer;
+}
+.pu-quickopen select option { font-size: 12px; color: var(--gs-text); background: #fff; }
+.pu-quickopen select.is-picked {
+  width: auto; min-width: 0; max-width: 130px;
+  font-size: 12px; color: var(--gs-text);
+  padding: 0 8px 0 20px; background-position: left 5px center;
+}
+.pu-quickopen select:focus { outline: none; border-color: var(--gs-primary-400); box-shadow: 0 0 0 2px rgba(56, 174, 208, .25); }
 .pu-quickopen .pu-btn { flex: 0 0 auto; }
 #qo-status { padding: 6px 14px 0; }
 #qo-status[hidden] { display: none; }
+
+/* ── "תיקי מקור" tab ──────────────────────────────────────────────────────── */
+/* Five tabs in a 320px popup: shrink the type a notch so every label fits on
+   one line instead of clipping. */
+.pu-tab { font-size: 12px; padding-inline: 2px; white-space: nowrap; }
+
+.pu-card textarea {
+  width: 100%; margin: 4px 0; padding: 7px 9px; resize: vertical;
+  border: 1px solid var(--gs-border); border-radius: var(--gs-radius-sm);
+  font: inherit; font-size: 12.5px; color: var(--gs-text);
+  box-sizing: border-box; background: #fff; direction: ltr; text-align: right;
+}
+.pu-card textarea:focus { outline: none; border-color: var(--gs-primary-400); box-shadow: 0 0 0 2px rgba(56, 174, 208, .25); }
+
+/* The result table is wider than the popup — it scrolls on its own, the popup
+   body never does. */
+.pu-bulk__scroll { max-height: 240px; overflow: auto; border: 1px solid var(--gs-border); border-radius: var(--gs-radius-sm); margin-top: 6px; }
+.pu-bulk__table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.pu-bulk__table th, .pu-bulk__table td {
+  padding: 4px 6px; text-align: right; white-space: nowrap;
+  border-bottom: 1px solid var(--gs-border);
+}
+.pu-bulk__table th { position: sticky; top: 0; background: var(--gs-surface); font-weight: 600; z-index: 1; }
+.pu-bulk__table tbody tr:hover { background: #F8FAFC; }
+.pu-bulk__table tr.is-empty td { color: var(--gs-text-muted); font-style: italic; }
