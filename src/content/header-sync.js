@@ -666,13 +666,12 @@
     }
     if (!cs.calendarId) { failJob('לא הוגדר יומן יעד.'); return; }
     setStatus('מסנכרן ' + events.length + ' דיונים ל-"' + (cs.calendarName || '') + '"…');
-    const r = await sendToSW({ type: 'cd/calSyncEvents', calendarId: cs.calendarId, events: events });
-    if (r && r.ok) {
-      await persistCal({ lastSyncAt: Date.now(), lastSyncCount: r.synced || 0 });
-      const failNote = r.failed ? ' · ' + r.failed + ' נכשלו' : '';
-      finishJob('✓ סונכרנו ' + (r.synced || 0) + ' דיונים' + failNote);
-    } else {
-      failJob('סנכרון נכשל: ' + String((r && r.error) || 'שגיאה').slice(0, 120));
+    try {
+      const r = await w.CD.calSync({ calendarId: cs.calendarId, events: events, send: sendToSW });
+      await persistCal({ lastSyncAt: Date.now(), lastSyncCount: r.added + r.updated });
+      finishJob('✓ ' + w.CD.calSyncSummary(r));
+    } catch (e) {
+      failJob('סנכרון נכשל: ' + String((e && e.message) || e).slice(0, 120));
     }
   }
 

@@ -133,6 +133,14 @@
     return djb2(key) + '@court-downloader';
   }
 
+  // Marks an event as one of ours, in extendedProperties.private.cdSource.
+  // The Google sync matches on this (plus cdCase) rather than on the UID.
+  const CAL_TAG = 'letz-hamishpat';
+  // Legacy events — written before the sync reconciled — carry no tag, but every
+  // UID this file has ever produced ends with this suffix. The sync uses it to
+  // find and absorb the duplicates the old UID scheme left behind.
+  const UID_SUFFIX = '@court-downloader';
+
   function summary(ev) {
     const parts = [];
     if (ev.sittingType) parts.push(ev.sittingType);
@@ -291,6 +299,17 @@
       iCalUID: uidFor(ev),
       summary: title,
       status: 'confirmed',
+      // Ownership tags. The UID alone can NOT identify a hearing across syncs:
+      // it hashes the date/time/type, so a postponed hearing produces a new UID
+      // and events.import creates a SECOND event instead of moving the first.
+      // The sync reconciles on these tags instead — cdCase scopes the match to
+      // one case, so a partial scrape can never disturb another case's events.
+      extendedProperties: {
+        private: {
+          cdSource: CAL_TAG,
+          cdCase: String(ev.caseId || ''),
+        },
+      },
     };
     if (desc) out.description = desc;
     if (loc) out.location = loc;
@@ -322,4 +341,6 @@
   CD.buildSingleIcs = buildSingleIcs;
   CD.icsFilename = icsFilename;
   CD.gcalEvent = gcalEvent;
+  CD.CAL_TAG = CAL_TAG;
+  CD.CAL_UID_SUFFIX = UID_SUFFIX;
 })(typeof window !== 'undefined' ? window : self);

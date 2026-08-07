@@ -476,30 +476,60 @@ async function calCreateCalendar({ summary }) {
   return { id: j.id, summary: j.summary };
 }
 
-// Upsert events into a calendar. We use events.import, which is idempotent on
-// iCalUID within a calendar — re-syncing the same hearing updates the existing
-// event instead of duplicating it (the stable UID is produced by ics-builder).
-async function calSyncEvents({ calendarId, events }) {
+// ── Calendar event primitives ────────────────────────────────────────────
+// The reconciling sync lives in shared/cal-sync.js (content-script side, where
+// it is testable in jsdom); this side just does the three privileged calls.
+//
+// There is deliberately no bulk "sync" call any more. The old one POSTed every
+// hearing to events.import and trusted iCalUID to upsert — but that UID hashes
+// the hearing's date and time, so a postponed hearing produced a NEW UID and
+// import created a SECOND event, leaving the original behind. That is the
+// duplication this replaces.
+const CAL_BASE = 'https://www.googleapis.com/calendar/v3/calendars/';
+
+// Our events for one case, within a date window. Google ANDs repeated
+// privateExtendedProperty filters, but legacy events predate the tag, so the
+// case filter is applied by the caller and this only narrows by source+window.
+async function calListEvents({ calendarId, timeMin, timeMax }) {
   if (!calendarId) throw new Error('no calendarId');
-  if (!Array.isArray(events) || !events.length) return { ok: 0, fail: 0, errors: [] };
-  const base = 'https://www.googleapis.com/calendar/v3/calendars/' +
-    encodeURIComponent(calendarId) + '/events/import';
-  let ok = 0, fail = 0;
-  const errors = [];
-  for (const ev of events) {
-    try {
-      const res = await calFetch(base, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ev),
-      });
-      if (res.ok) ok++;
-      else { fail++; if (errors.length < 3) errors.push('HTTP ' + res.status + ': ' + (await res.text()).slice(0, 100)); }
-    } catch (e) {
-      fail++; if (errors.length < 3) errors.push((e && e.message) || String(e));
-    }
-  }
-  return { ok, fail, errors };
+  const qs = new URLSearchParams({
+    singleEvents: 'true',
+    showDeleted: 'false',
+    maxResults: '250',
+    fields: 'items(id,iCalUID,summary,start,end,extendedProperties)',
+  });
+  if (timeMin) qs.set('timeMin', timeMin);
+  if (timeMax) qs.set('timeMax', timeMax);
+  const res = await calFetch(CAL_BASE + encodeURIComponent(calendarId) + '/events?' + qs.toString(), {});
+  if (!res.ok) throw new Error('Calendar list HTTP ' + res.status + ': ' + (await res.text()).slice(0, 140));
+  const j = await res.json();
+  return { events: j.items || [] };
+}
+
+// PATCH, not PUT: leaves fields we don't manage (reminders, colour, the user's
+// own edits) untouched, and keeps the event id — which is what makes a
+// postponement MOVE the existing entry instead of creating another one.
+async function calPatchEvent({ calendarId, eventId, patch }) {
+  if (!calendarId || !eventId) throw new Error('no calendarId/eventId');
+  const res = await calFetch(CAL_BASE + encodeURIComponent(calendarId) + '/events/' + encodeURIComponent(eventId), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch || {}),
+  });
+  if (!res.ok) throw new Error('Calendar patch HTTP ' + res.status + ': ' + (await res.text()).slice(0, 140));
+  return { id: eventId };
+}
+
+async function calImportEvent({ calendarId, event }) {
+  if (!calendarId) throw new Error('no calendarId');
+  const res = await calFetch(CAL_BASE + encodeURIComponent(calendarId) + '/events/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(event),
+  });
+  if (!res.ok) throw new Error('Calendar import HTTP ' + res.status + ': ' + (await res.text()).slice(0, 140));
+  const j = await res.json();
+  return { id: j.id };
 }
 
 // ── Message router ───────────────────────────────────────────────────────
@@ -520,7 +550,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'cd/calConnect': return sendResponse(await calConnect());
         case 'cd/calListCalendars': { const r = await calListCalendars(); return sendResponse({ ok: true, calendars: r.calendars }); }
         case 'cd/calCreateCalendar': { const r = await calCreateCalendar(msg); return sendResponse({ ok: true, id: r.id, summary: r.summary }); }
-        case 'cd/calSyncEvents': { const r = await calSyncEvents(msg); return sendResponse({ ok: true, synced: r.ok, failed: r.fail, errors: r.errors }); }
+        case 'cd/calListEvents': { const r = await calListEvents(msg); return sendResponse({ ok: true, events: r.events }); }
+        case 'cd/calPatchEvent': { const r = await calPatchEvent(msg); return sendResponse({ ok: true, id: r.id }); }
+        case 'cd/calImportEvent': { const r = await calImportEvent(msg); return sendResponse({ ok: true, id: r.id }); }
         case 'cd/openOptions': chrome.runtime.openOptionsPage(); return sendResponse({ ok: true });
         case 'cd/openTab': {
           // Only ever open Net HaMishpat URLs (the judge-runner landing page).

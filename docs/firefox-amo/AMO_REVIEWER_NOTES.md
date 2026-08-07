@@ -68,7 +68,7 @@ No other behavioral changes.
 | `content/hearings-panel.js` | page's own form (securesso, same origin) | Hearings flow | Drive the date-range postback before reading the grid. |
 | `background/service-worker.js` (`uploadServer` / `testServer`) | the endpoint the user typed | Only if user enables the "server" destination | POST each file as `multipart/form-data` with `X-API-Key`. |
 | `background/service-worker.js` (Drive) | `https://www.googleapis.com/drive/v3/…`, `…/upload/drive/v3/…`, `…/oauth2/v3/userinfo` | Only if user enables Google Drive | Verify account, browse folders, dedupe, upload files. Scopes: `drive.file` + `drive.metadata.readonly`. |
-| `background/service-worker.js` (Calendar) | `https://www.googleapis.com/calendar/v3/…` | Only if user enables Calendar sync | List/create calendar; import events. Scope: `calendar`. |
+| `background/service-worker.js` (Calendar) | `https://www.googleapis.com/calendar/v3/…` | Only if user enables Calendar sync | List/create calendar; list existing events in the synced date range; import new events and patch moved ones. Scope: `calendar`. |
 | `background/service-worker.js` (OAuth) | `https://accounts.google.com/o/oauth2/v2/auth` | Only when user clicks "Connect to Google" | Implicit-flow consent window (`launchWebAuthFlow`). |
 
 The popup / About pages link to `https://www.z-g.co.il/court-downloader`
@@ -135,7 +135,7 @@ contact `guy@z-g.co.il`.
 | host `www.googleapis.com` | `service-worker.js` | Drive/Calendar, only when enabled by the user. |
 | host `accounts.google.com` | `service-worker.js` | The OAuth consent window opened by `launchWebAuthFlow`. |
 | scopes `drive.file`, `drive.metadata.readonly` | `service-worker.js` | Files it created; folder names for the built-in picker. |
-| scope `calendar` | `service-worker.js` | The user's hearing events (only if calendar sync is enabled). |
+| scope `calendar` | `service-worker.js` | The user's hearing events (only if calendar sync is enabled), including reading them back within the synced date range so a rescheduled hearing updates in place. |
 
 ## `web-ext lint` warnings — for the record
 

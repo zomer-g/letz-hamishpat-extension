@@ -38,6 +38,7 @@
         "shared/ui-host.js",
         "shared/csv.js",
         "shared/ics-builder.js",
+        "shared/cal-sync.js",
         "shared/datepicker.js",
         "shared/case-locator.js",
         "shared/courts.js",

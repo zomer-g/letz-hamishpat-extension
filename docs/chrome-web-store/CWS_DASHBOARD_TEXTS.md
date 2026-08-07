@@ -85,7 +85,7 @@ Used only when the user enables a Google destination: Drive uploads (files.creat
 ### Google OAuth scopes (requested only on explicit sign-in)
 - `https://www.googleapis.com/auth/drive.file` — access only files the extension created (Drive uploads).
 - `https://www.googleapis.com/auth/drive.metadata.readonly` — read folder names for the built-in Drive folder picker.
-- `https://www.googleapis.com/auth/calendar` — create/update the user's hearing events in a calendar they choose.
+- `https://www.googleapis.com/auth/calendar` — create/update the user's hearing events in a calendar they choose. The sync also READS events in that calendar, limited to the date range of the hearings being synced, so a rescheduled hearing updates its existing entry instead of adding a duplicate.
 
 ### Data Usage Declarations (tick the boxes truthfully)
 

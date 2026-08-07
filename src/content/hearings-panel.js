@@ -364,15 +364,11 @@
     state.busy = true;
     setStatus('מסנכרן ' + events.length + ' דיונים ליומן "' + (cs.calendarName || '') + '"…');
     try {
-      const r = await sendToSW({ type: 'cd/calSyncEvents', calendarId: cs.calendarId, events: events });
-      if (r && r.ok) {
-        if (w.CD && w.CD.saveSettings) {
-          state.settings = await w.CD.saveSettings({ calendarSync: { lastSyncAt: Date.now(), lastSyncCount: r.synced || 0 } });
-        }
-        setStatus('✓ סונכרנו ' + (r.synced || 0) + ' דיונים ליומן "' + (cs.calendarName || '') + '"' + (r.failed ? ' · ' + r.failed + ' נכשלו' : ''));
-      } else {
-        setStatus('סנכרון נכשל: ' + String((r && r.error) || 'שגיאה').slice(0, 100), 'error');
+      const r = await w.CD.calSync({ calendarId: cs.calendarId, events: events, send: sendToSW });
+      if (w.CD && w.CD.saveSettings) {
+        state.settings = await w.CD.saveSettings({ calendarSync: { lastSyncAt: Date.now(), lastSyncCount: r.added + r.updated } });
       }
+      setStatus('✓ ' + w.CD.calSyncSummary(r) + ' — יומן "' + (cs.calendarName || '') + '"', r.failed ? 'error' : '');
     } catch (e) {
       setStatus('סנכרון נכשל: ' + ((e && e.message) || String(e)), 'error');
     } finally {
@@ -534,9 +530,8 @@
     state.busy = true;
     setStatus('מסנכרן ' + events.length + ' דיונים ליומן "' + (target.calendarName || '') + '"…');
     try {
-      const r = await sendToSW({ type: 'cd/calSyncEvents', calendarId: target.calendarId, events: events });
-      if (r && r.ok) setStatus('✓ סונכרנו ' + (r.synced || 0) + ' דיונים ליומן "' + (target.calendarName || '') + '"' + (r.failed ? ' · ' + r.failed + ' נכשלו' : ''));
-      else setStatus('הסנכרון נכשל: ' + String((r && r.error) || 'שגיאה').slice(0, 100), 'error');
+      const r = await w.CD.calSync({ calendarId: target.calendarId, events: events, send: sendToSW });
+      setStatus('✓ ' + w.CD.calSyncSummary(r) + ' — יומן "' + (target.calendarName || '') + '"', r.failed ? 'error' : '');
     } catch (e) { setStatus('הסנכרון נכשל: ' + ((e && e.message) || String(e)), 'error'); }
     finally { state.busy = false; }
   }

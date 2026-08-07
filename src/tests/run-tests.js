@@ -9,6 +9,7 @@ const { createHarness } = require('./helpers/harness.js');
 
 const MODULES = [
   './ics-builder.test.js',
+  './cal-sync.test.js',
   './csv.test.js',
   './settings.test.js',
   './net-court.test.js',

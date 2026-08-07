@@ -72,7 +72,7 @@ Every outbound network call in the extension:
 | `content/hearings-panel.js` | page's own form (securesso, same origin) | Hearings flow | Drive the date-range postback before reading the grid. |
 | `background/service-worker.js` (uploadServer / testServer) | the endpoint the user typed | Only if user enables the "server" destination | POST each file as `multipart/form-data` with `X-API-Key`. |
 | `background/service-worker.js` (Drive: connect/list/ensureFolder/listDocIds/upload) | `https://www.googleapis.com/drive/v3/…`, `…/upload/drive/v3/…`, `…/oauth2/v3/userinfo` | Only if user enables Google Drive | Verify account, browse folders, dedupe, upload files. Scope `drive.file` + `drive.metadata.readonly`. |
-| `background/service-worker.js` (Calendar: list/create/import) | `https://www.googleapis.com/calendar/v3/…` | Only if user enables Calendar sync | List/create the chosen calendar and import hearing events. Scope `calendar`. |
+| `background/service-worker.js` (Calendar: list/create/import/patch) | `https://www.googleapis.com/calendar/v3/…` | Only if user enables Calendar sync | List/create the chosen calendar; list existing events within the synced date range; import new hearings and patch ones that moved. Scope `calendar`. |
 
 The popup / About pages link to `https://www.z-g.co.il/court-downloader` (+ `/privacy`, `/terms`) as plain anchor hrefs — the extension never fetches those URLs.
 
@@ -116,7 +116,7 @@ A screencast of the full authenticated flow can be supplied on request.
 | host `securesso.court.gov.il` | content scripts | Fetch the user-selected items from the source host. |
 | host `www.googleapis.com` | `service-worker.js` | Drive/Calendar, when enabled. |
 | optional `https://*/*`,`http://*/*` | `service-worker.js` | Only if the user configures a personal API endpoint. |
-| scopes `drive.file`, `drive.metadata.readonly`, `calendar` | `service-worker.js` | Files it created; folder names for the picker; the user's hearing events. |
+| scopes `drive.file`, `drive.metadata.readonly`, `calendar` | `service-worker.js` | Files it created; folder names for the picker; the user's hearing events (read back within the synced date range so reschedules update in place). |
 
 ---
 
