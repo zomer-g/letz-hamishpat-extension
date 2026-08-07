@@ -452,12 +452,14 @@
     let lastErr = '';
     let viewerMisses = 0; // docs whose failure was "the viewer wasn't served"
 
-    // The per-document viewer flow (btnDocument → GetAllImages) is simply NOT
-    // served on the public portal: verified A/B on the same case and the same
-    // rows — authenticated returned 2/8/2/2 pages, public returned no
-    // DocumentNumber at all (HTTP 200, decisions list re-rendered, no error).
-    // Those two symptoms are what this classifies, so a whole run of them is
-    // reported as "unsupported here" rather than as a court-side block.
+    // The viewer refused to open the document: the btnDocument postback came
+    // back 200 with the list re-rendered and no DocumentNumber, or GetAllImages
+    // returned no pages. Verified live that this is NOT permanent — the public
+    // portal serves this flow fine on a healthy session, but it degrades into
+    // exactly these two symptoms under rapid automated postbacks (its
+    // bot/rate protection), and then no amount of waiting inside one run
+    // recovers it. So a whole pass of these ends the run with an honest
+    // message instead of eight escalating "the court blocked us" cooldowns.
     function isViewerMiss(msg) {
       return msg === 'לא נמצא מזהה מסמך' || msg === 'השרת לא החזיר עמודים';
     }
@@ -521,7 +523,7 @@
     // are still missing — until none remain (or a full pass makes no progress).
     let pending = chosen.slice();
     let noProgress = 0;
-    let viewerUnsupported = false;
+    let viewerRefused = false;
     for (let pass = 1; pass <= CLEANUP_MAX_PASSES; pass++) {
       if (state.cancel || sessionExpired || !pending.length) break;
       if (pass > 1) {
@@ -544,20 +546,20 @@
       }
       pending = stillFailed;
       if (!pending.length || sessionExpired) break;
-      // Nothing came through and EVERY failure was the viewer not answering:
-      // that is not a burst block, and no amount of waiting fixes it (this is
-      // the permanent state on the public portal). Stop now instead of sitting
-      // through 8 escalating cooldowns — the old behaviour spent ~20 minutes
-      // announcing a court-side block that was never happening.
-      if (pass === 1 && !ok && viewerMisses >= pending.length) { viewerUnsupported = true; break; }
+      // Nothing came through and EVERY failure was the viewer refusing to open
+      // the document. Waiting it out inside the run doesn't recover it, so stop
+      // instead of sitting through 8 escalating cooldowns — the old behaviour
+      // spent ~20 minutes announcing a court-side block that was never
+      // happening. The progress record is kept, so "הורדה" resumes later.
+      if (pass === 1 && !ok && viewerMisses >= pending.length) { viewerRefused = true; break; }
       noProgress = (pending.length >= before) ? noProgress + 1 : 0;
       if (noProgress >= 2) break; // two cooldown+passes with zero progress → give up
     }
     let fail = pending.length;
     // Record still-failed docs in the index (so the manifest is complete), with
     // the reason we actually observed rather than a blanket "blocked".
-    const failReason = viewerUnsupported
-      ? 'צפייה במסמך אינה נתמכת בפורטל זה'
+    const failReason = viewerRefused
+      ? 'נט המשפט סירבה לפתוח את המסמך לצפייה'
       : (lastErr || 'נכשל אחרי ניסיונות חוזרים');
     for (const it of pending) {
       const r = csvRow(0, '', it, 'נכשל', failReason);
@@ -597,13 +599,15 @@
       setStatus('⚠ פג תוקף הסשן אחרי ' + ok + ' מסמכים. מה שהוכן נשמר. יש להתחבר מחדש וללחוץ "הורדה" שוב — נמשיך מהנקודה הזו. ' + summary.join(' · '), 'error');
     } else if (state.cancel) {
       setStatus('בוטל. ' + ok + ' מסמכים הוכנו ונשמרו. ' + summary.join(' · '));
-    } else if (viewerUnsupported) {
-      // The viewer flow this path is built on isn't served here at all. Retrying
-      // is pointless, so don't invite it — say where it does work.
-      clearDone(pkey);
-      setStatus('נט המשפט לא מאפשרת לפתוח את המסמכים לצפייה בפורטל הזה, ולכן לא ניתן לבנות מהם PDF' +
-        (onPublicPortal() ? ' — בפורטל הציבורי (ללא הזדהות) התכונה אינה זמינה. יש להתחבר בהזדהות ממשלתית ולנסות שוב' : '') +
-        '. הורדת Word עשויה לעבוד עבור חלק מהמסמכים. (זו מגבלה של נט המשפט, לא תקלה בתוסף.)', 'error');
+    } else if (viewerRefused) {
+      // Not a court-side rate limit, and not a permanent limitation either —
+      // the portal simply stopped opening documents for this session. Keep the
+      // progress record so a later click resumes instead of restarting.
+      setStatus('נט המשפט סירבה לפתוח את המסמכים לצפייה, ולכן לא נבנה אף PDF' +
+        (onPublicPortal()
+          ? '. בפורטל הציבורי (ללא הזדהות) זה קורה כשההגנה מפני גישה אוטומטית נכנסת לפעולה — כדאי להמתין מספר דקות וללחוץ "הורדה" שוב, או להתחבר בהזדהות ממשלתית'
+          : '. כדאי לרענן את העמוד וללחוץ "הורדה" שוב') +
+        '. מה שכבר ירד נשמר.', 'error');
     } else if (fail) {
       // Keep the progress record so a re-click of "הורדה" resumes only the
       // still-missing docs (do NOT clearDone).
