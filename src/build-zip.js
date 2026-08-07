@@ -44,6 +44,7 @@ function toFirefoxManifest(mf) {
     m.background = { scripts: [m.background.service_worker] };
   }
   delete m.oauth2;
+  delete m.key; // Chrome-only, and dev-only even there — see stripDevOnlyKeys
   m.browser_specific_settings = {
     gecko: {
       id: 'court-downloader@z-g.co.il',
@@ -101,12 +102,25 @@ function ensureDist() {
   if (!fs.existsSync(DIST)) fs.mkdirSync(DIST, { recursive: true });
 }
 
+// `key` pins the extension ID. It lives in the source manifest so an UNPACKED
+// dev load gets the same id as the published item — without it Chrome assigns a
+// per-path id, chrome.identity.getAuthToken is called with an id the OAuth
+// client was never registered for, and every Drive/Calendar sign-in dies with
+// "bad client id". It must NOT ship: the Chrome Web Store assigns identity from
+// the item itself, and on Firefox the field is meaningless.
+function stripDevOnlyKeys(mf) {
+  const m = JSON.parse(JSON.stringify(mf));
+  delete m.key;
+  return m;
+}
+
 // Read a file for packaging — the manifest is transformed for Firefox, every
 // other file ships byte-identical to both stores.
 function contentFor(rel) {
-  if (TARGET === 'firefox' && rel === 'manifest.json') {
+  if (rel === 'manifest.json') {
     const mf = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
-    return Buffer.from(JSON.stringify(toFirefoxManifest(mf), null, 2) + '\n', 'utf8');
+    const out = TARGET === 'firefox' ? toFirefoxManifest(mf) : stripDevOnlyKeys(mf);
+    return Buffer.from(JSON.stringify(out, null, 2) + '\n', 'utf8');
   }
   return fs.readFileSync(path.join(ROOT, rel));
 }

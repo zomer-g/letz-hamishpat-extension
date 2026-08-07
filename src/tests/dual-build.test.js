@@ -24,7 +24,7 @@ function firefoxManifest() {
   return JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'firefox', 'manifest.json'), 'utf8'));
 }
 
-function run(t) {
+async function run(t) {
   const chrome = chromeManifest();
 
   t.section('dual-build: the compat shim loads before everything else');
@@ -41,7 +41,37 @@ function run(t) {
     t.ok('no gecko settings leak into the Chrome build', !chrome.browser_specific_settings);
   }
 
+  // `key` pins the extension ID for UNPACKED dev loads. Without it Chrome
+  // derives the id from the install path, chrome.identity.getAuthToken runs
+  // against an id the OAuth client was never registered for, and every
+  // Drive/Calendar sign-in fails with "bad client id" — which is exactly what
+  // happened when this build was first loaded unpacked. It must stay in source
+  // and must never reach a store package.
+  t.section('dual-build: the dev signing key never ships');
+  {
+    const crypto = require('crypto');
+    t.ok('source manifest carries the key', typeof chrome.key === 'string' && chrome.key.length > 300);
+    // The id Chrome derives: sha256 of the DER public key, first 16 bytes,
+    // each nibble mapped 0-15 → a-p.
+    const h = crypto.createHash('sha256').update(Buffer.from(chrome.key, 'base64')).digest();
+    let id = '';
+    for (let i = 0; i < 16; i++) {
+      id += String.fromCharCode(97 + (h[i] >> 4)) + String.fromCharCode(97 + (h[i] & 15));
+    }
+    t.eq('it derives the published Chrome Web Store id', id, 'mlbkjgpedfodphblhgamfgelidgmlmin');
+
+    execFileSync(process.execPath, [path.join(ROOT, 'build-zip.js'), '--target=chrome'],
+      { cwd: ROOT, stdio: 'ignore' });
+    const JSZip = require(path.join(ROOT, 'vendor', 'jszip.min.js'));
+    const zipPath = path.join(ROOT, 'dist', 'extension-v' + chrome.version + '.zip');
+    const z = await new JSZip().loadAsync(fs.readFileSync(zipPath));
+    const packedMf = JSON.parse(await z.file('manifest.json').async('string'));
+    t.ok('the Chrome package has no key', !('key' in packedMf));
+    t.eq('the package still has the right version', packedMf.version, chrome.version);
+  }
+
   const ff = firefoxManifest();
+  t.ok('the Firefox manifest has no key', !('key' in ff));
 
   t.section('dual-build: Firefox manifest satisfies AMO');
   {
