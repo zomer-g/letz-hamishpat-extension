@@ -447,6 +447,23 @@
 
     let ok = 0, sOk = 0, sFail = 0, dOk = 0, dFail = 0, dSkip = 0, sessionExpired = false;
     const allRows = []; // index of SUCCEEDED docs; still-failed docs appended at the end
+    // Why the last document failed, so the run can report the truth instead of
+    // blaming a rate limit for everything (see viewerMisses below).
+    let lastErr = '';
+    let viewerMisses = 0; // docs whose failure was "the viewer wasn't served"
+
+    // The per-document viewer flow (btnDocument → GetAllImages) is simply NOT
+    // served on the public portal: verified A/B on the same case and the same
+    // rows — authenticated returned 2/8/2/2 pages, public returned no
+    // DocumentNumber at all (HTTP 200, decisions list re-rendered, no error).
+    // Those two symptoms are what this classifies, so a whole run of them is
+    // reported as "unsupported here" rather than as a court-side block.
+    function isViewerMiss(msg) {
+      return msg === 'לא נמצא מזהה מסמך' || msg === 'השרת לא החזיר עמודים';
+    }
+    function onPublicPortal() {
+      return !!(CD.isPublicPortal && CD.isPublicPortal());
+    }
 
     // Process ONE document: fetch → build PDF → deliver to all destinations.
     // Returns true on success. SESSION_EXPIRED sets the flag and aborts the run.
@@ -460,8 +477,16 @@
           if (!imgs.length) throw new Error('השרת לא החזיר עמודים');
           images = imgs; break;
         } catch (e) {
-          if ((e && e.message) === 'SESSION_EXPIRED') { sessionExpired = true; return false; }
-          if (state.cancel || attempt >= PDF_MAX_RETRY) return false;
+          const msg = (e && e.message) || String(e);
+          if (msg === 'SESSION_EXPIRED') { sessionExpired = true; return false; }
+          // Record the reason only when we actually give up on this document —
+          // a transient error that the next attempt recovers from must not end
+          // up quoted in the run summary.
+          if (state.cancel || attempt >= PDF_MAX_RETRY) {
+            lastErr = msg;
+            if (isViewerMiss(msg)) viewerMisses++;
+            return false;
+          }
           await wsleep(1000 * (attempt + 1) + 500); // 1.5s, 2.5s, 3.5s, 4.5s
         }
       }
@@ -496,6 +521,7 @@
     // are still missing — until none remain (or a full pass makes no progress).
     let pending = chosen.slice();
     let noProgress = 0;
+    let viewerUnsupported = false;
     for (let pass = 1; pass <= CLEANUP_MAX_PASSES; pass++) {
       if (state.cancel || sessionExpired || !pending.length) break;
       if (pass > 1) {
@@ -518,13 +544,23 @@
       }
       pending = stillFailed;
       if (!pending.length || sessionExpired) break;
+      // Nothing came through and EVERY failure was the viewer not answering:
+      // that is not a burst block, and no amount of waiting fixes it (this is
+      // the permanent state on the public portal). Stop now instead of sitting
+      // through 8 escalating cooldowns — the old behaviour spent ~20 minutes
+      // announcing a court-side block that was never happening.
+      if (pass === 1 && !ok && viewerMisses >= pending.length) { viewerUnsupported = true; break; }
       noProgress = (pending.length >= before) ? noProgress + 1 : 0;
       if (noProgress >= 2) break; // two cooldown+passes with zero progress → give up
     }
     let fail = pending.length;
-    // Record still-failed docs in the index (so the manifest is complete).
+    // Record still-failed docs in the index (so the manifest is complete), with
+    // the reason we actually observed rather than a blanket "blocked".
+    const failReason = viewerUnsupported
+      ? 'צפייה במסמך אינה נתמכת בפורטל זה'
+      : (lastErr || 'נכשל אחרי ניסיונות חוזרים');
     for (const it of pending) {
-      const r = csvRow(0, '', it, 'נכשל', 'חסום/נכשל אחרי ניסיונות חוזרים');
+      const r = csvRow(0, '', it, 'נכשל', failReason);
       allRows.push(r); if (dests.localZip) partRows.push(r);
     }
 
@@ -561,10 +597,18 @@
       setStatus('⚠ פג תוקף הסשן אחרי ' + ok + ' מסמכים. מה שהוכן נשמר. יש להתחבר מחדש וללחוץ "הורדה" שוב — נמשיך מהנקודה הזו. ' + summary.join(' · '), 'error');
     } else if (state.cancel) {
       setStatus('בוטל. ' + ok + ' מסמכים הוכנו ונשמרו. ' + summary.join(' · '));
+    } else if (viewerUnsupported) {
+      // The viewer flow this path is built on isn't served here at all. Retrying
+      // is pointless, so don't invite it — say where it does work.
+      clearDone(pkey);
+      setStatus('נט המשפט לא מאפשרת לפתוח את המסמכים לצפייה בפורטל הזה, ולכן לא ניתן לבנות מהם PDF' +
+        (onPublicPortal() ? ' — בפורטל הציבורי (ללא הזדהות) התכונה אינה זמינה. יש להתחבר בהזדהות ממשלתית ולנסות שוב' : '') +
+        '. הורדת Word עשויה לעבוד עבור חלק מהמסמכים. (זו מגבלה של נט המשפט, לא תקלה בתוסף.)', 'error');
     } else if (fail) {
       // Keep the progress record so a re-click of "הורדה" resumes only the
       // still-missing docs (do NOT clearDone).
-      setStatus('⚠ הסתיים — ' + ok + ' מסמכים. ' + summary.join(' · ') + ' · ' + fail + ' נכשלו. לחצ/י "הורדה" שוב כדי להמשיך מהם.', 'error');
+      setStatus('⚠ הסתיים — ' + ok + ' מסמכים. ' + summary.join(' · ') + ' · ' + fail + ' נכשלו' +
+        (lastErr ? ' (' + lastErr + ')' : '') + '. לחצ/י "הורדה" שוב כדי להמשיך מהם.', 'error');
     } else {
       clearDone(pkey);
       setStatus('✓ הסתיים — ' + ok + ' מסמכים. ' + summary.join(' · '), '');
@@ -581,16 +625,30 @@
   // resource every ~3 min while a download is active to reset the idle timer.
   // (Cannot extend an absolute session lifetime — that needs re-login.)
   let _keepAliveTimer = null;
+  // Pick a STATIC asset (css/js/image) to ping. The old selector required the
+  // literal "court.gov.il" in the attribute — but both portals reference their
+  // assets root-relatively ("/Ngcs.Web.Secured/Scripts/jquery.js?V=…"), so it
+  // matched NOTHING on either one (verified live) and fell through to
+  // location.href. That made the "keep-alive" issue a GET of the ASP.NET
+  // application page itself, with a junk "?_cdka=" parameter, immediately on
+  // pressing download and every 3 minutes after — a page request that mutates
+  // server-side state, aimed at a bot-protected portal. Match on the element,
+  // not on the host, and resolve to an absolute URL via .href/.src.
   function keepAliveUrl() {
-    const el = document.querySelector('link[rel="stylesheet"][href*="court.gov.il"], script[src*="court.gov.il"], img[src*="court.gov.il"]');
-    const u = el && (el.href || el.src);
-    return u || location.href;
+    const els = document.querySelectorAll('link[rel="stylesheet"][href], script[src], img[src]');
+    for (const el of els) {
+      const u = el.href || el.src; // absolute, resolved by the DOM
+      // Same-origin and a real static file — never an .aspx page.
+      if (!u || u.indexOf(location.origin + '/') !== 0) continue;
+      if (/\.(css|js|png|gif|jpe?g|svg|woff2?)(\?|$)/i.test(u)) return u;
+    }
+    return null; // nothing safe to ping → skip the ping entirely
   }
   function pingKeepAlive() {
     try {
       const base = keepAliveUrl();
-      const url = base + (base.indexOf('?') === -1 ? '?' : '&') + '_cdka=' + Date.now();
-      fetch(url, { credentials: 'include', cache: 'no-store' }).catch(function () {});
+      if (!base) return; // better no ping than a request that disturbs the session
+      fetch(base, { credentials: 'include', cache: 'no-store' }).catch(function () {});
     } catch (e) {}
   }
   function startKeepAlive() { stopKeepAlive(); pingKeepAlive(); _keepAliveTimer = setInterval(pingKeepAlive, 180000); }
@@ -680,14 +738,31 @@
       const fb = filenameFromCD(dl.headers.get('content-disposition'), 'word' + guessExt(ct));
       return { files: await extractWordFiles(blob, ct, fb) };
     }
-    // No download URL → the site refused the selection because a document isn't
-    // exportable to Word. On פרוטוקולים the page text carries
-    // "המסמכים הבאים אינם ניתנים להורדה"; on החלטות/פסקי דין that warning is a
-    // modal whose TEXT is injected client-side (so it's absent from the HTML) —
-    // but its acknowledge button `btnDownloadWordDocs2` IS rendered in the
-    // response. Either signal means "blocked". (Checked AFTER DownloadDocuments,
-    // so a successful response that also contains btn2 is never mislabeled.)
-    if (html.indexOf('אינם ניתנים להורדה') !== -1 || /btnDownloadWordDocs2/.test(html)) return { blocked: true };
+    // No download URL. Net HaMishpat offers only a MINORITY of decisions as
+    // Word — verified live against a 19-decision case: exactly 2 were
+    // exportable, and NOTHING in the ArrayStore predicts which (IsIDCPublished,
+    // IsIDCPublishedForSummary, SummaryVersionDocumentID and IsCanceledDecision
+    // were identical across all 19, and the decision name doesn't correlate
+    // either). So "no download URL" is the NORMAL answer for most documents,
+    // not an error — the run must say "not available as Word", never
+    // "Net HaMishpat blocked us".
+    //
+    // Do NOT test for `btnDownloadWordDocs2` here: it is a hidden <a> that the
+    // decisions screen renders into EVERY response, including successful ones
+    // (verified on an untouched page and on a 200 that did carry a
+    // DownloadDocuments URL). Keying "blocked" off it painted every failure —
+    // session, network, server error — as a court-side block, with no retry and
+    // no way for the user to tell the difference.
+    //
+    // The פרוטוקולים screen does put the warning in the HTML, so when that text
+    // is present we know it's unavailable rather than merely inferring it.
+    if (html.indexOf('אינם ניתנים להורדה') !== -1) return { unavailable: true, confirmed: true };
+    // Otherwise: the postback came back as a normal page render with no file and
+    // no warning — on החלטות/פסקי דין that is what an unexportable document
+    // looks like, because the warning modal's text is injected client-side.
+    if (/btnDownloadWordDocs/.test(html)) return { unavailable: true, confirmed: false };
+    // No Word UI in the response at all → this isn't the list screen answering;
+    // treat it as a genuine failure so it gets retried and reported as one.
     return { fail: true };
   }
   function bufOf(u8) { return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength); }
@@ -739,27 +814,29 @@
       if (item) indexRows.push(csvRow(indexRows.length + 1, nm, item, 'הורד', ''));
     }
 
-    let ok = 0, blocked = 0, fail = 0, skipped = 0, sessionExpired = false;
+    let ok = 0, unavailable = 0, fail = 0, skipped = 0, sessionExpired = false;
     const vsRef = { vs: null };
     showWordMask('מוריד Word — 0/' + total + '…', 0);
     try {
       if (slow) {
         // Process ONE doc (one-at-a-time → informative name + index entry).
-        // Returns true when handled (downloaded / already-in-Drive / genuinely
-        // blocked); false when the server refused it (retry in a cleanup pass).
+        // Returns true when handled (downloaded / already-in-Drive / not
+        // available as Word); false when the server refused it (retry later).
         async function processOneWord(item) {
           const inDrive = driveReady && driveExisting.has(String(item.docId));
           if (inDrive && !saveToDisk && !serverEp) { skipped++; return true; }
           let r = null;
           for (let attempt = 0; ; attempt++) {
             r = await fetchWordBatch([item], vsRef);
-            if (r.sessionExpired || r.blocked || r.files) break;
+            if (r.sessionExpired || r.unavailable || r.files) break;
             if (state.wordCancel || attempt >= PDF_MAX_RETRY) break;
             await wsleep(1000 * (attempt + 1) + 500);
           }
           if (r.sessionExpired) { sessionExpired = true; return false; }
-          if (r.blocked) { blocked++; return true; } // genuinely unavailable — don't retry
-          if (!r.files) return false;                // refused (rate limit) — retry later
+          // Not offered as Word by Net HaMishpat — a normal answer for most
+          // decisions, so don't retry and don't call it a failure.
+          if (r.unavailable) { unavailable++; return true; }
+          if (!r.files) return false;                // genuine failure — retry later
           let k = 0;
           for (const f of r.files) {
             const ext = (f.name.match(/\.[a-z0-9]+$/i) || ['.doc'])[0];
@@ -815,19 +892,19 @@
             await wsleep(300);
             continue;
           }
-          // The batch failed AS A WHOLE — almost always because ONE document in
-          // it isn't available for Word (נט המשפט returns "המסמכים הבאים אינם
-          // ניתנים להורדה" and refuses the entire selection). A single bad doc
-          // must not sink the 4 good ones, so fall back to retrying each item
-          // alone: good docs download, the offending doc is counted+skipped.
-          if (batch.length === 1) { if (r.blocked) blocked++; else fail++; await wsleep(250); continue; }
-          showWordMask('מדלג על מסמך חסום — מוריד את השאר בנפרד (' + ok + '/' + total + ')…', ok / total);
+          // The batch produced no file AS A WHOLE — usually because at least one
+          // document in it isn't offered as Word (נט המשפט returns "המסמכים
+          // הבאים אינם ניתנים להורדה" and refuses the entire selection). Most
+          // decisions are in that state, so a mixed batch is the common case:
+          // retry each item alone so the available ones still download.
+          if (batch.length === 1) { if (r.unavailable) unavailable++; else fail++; await wsleep(250); continue; }
+          showWordMask('חלק מהמסמכים אינם זמינים כ-Word — מוריד את השאר בנפרד (' + ok + '/' + total + ')…', ok / total);
           for (const item of batch) {
             if (state.wordCancel) break;
             const rr = await fetchWordBatch([item], vsRef);
             if (rr.sessionExpired) { sessionExpired = true; break; }
             if (rr.files) { for (const f of rr.files) await deliver(f.u8, f.name, null); ok++; }
-            else if (rr.blocked) blocked++;
+            else if (rr.unavailable) unavailable++;
             else fail++;
             await wsleep(250);
           }
@@ -862,16 +939,26 @@
       setStatus('⚠ פג תוקף הסשן אחרי ' + ok + ' מסמכים. התחבר/י מחדש ונסה/י שוב.' + extra, 'error');
     } else if (state.wordCancel) {
       setStatus('בוטל. ירדו ' + ok + ' מסמכים כ-Word.' + extra);
-    } else if (!ok && skipped && !fail && !blocked) {
+    } else if (!ok && skipped && !fail && !unavailable) {
       // Everything was already in Drive — benign, not an error.
       setStatus('✓ כל ' + skipped + ' המסמכים כבר קיימים ב-Drive — לא הועלו מחדש. (כדי להוריד גם למחשב, ניתן לסמן יעד ZIP בהגדרות.)');
+    } else if (!ok && !fail && unavailable) {
+      // NOTHING was available as Word. This is the case that read as "the Word
+      // download is broken": Net HaMishpat offers only a minority of decisions
+      // as Word (2 of 19 in the case this was diagnosed on), so selecting a
+      // whole folder legitimately yields zero files. Say that plainly, and
+      // point at PDF — which works for all of them.
+      setStatus('נט המשפט לא מציעה אף אחד מ-' + unavailable + ' המסמכים שנבחרו כקובץ Word — ' +
+        'הורדת Word זמינה רק לחלק מההחלטות, וזו מגבלה של נט המשפט ולא תקלה בתוסף. ' +
+        'כדי לקבל את המסמכים האלה יש לעבור למצב PDF.' + extra, 'error');
     } else {
       const parts = [];
       if (ok) parts.push(ok + ' מסמכים' + (master ? ' ב-ZIP אחד' : '') + (slow ? ' + אינדקס' : ''));
-      if (blocked) parts.push(blocked + ' חסומים ע"י נט המשפט');
+      if (unavailable) parts.push(unavailable + ' אינם זמינים כ-Word בנט המשפט');
       if (fail) parts.push(fail + ' נכשלו');
       setStatus((ok ? '✓ ' : '⚠ ') + 'הסתיים — ' + (parts.join(' · ') || '0 מסמכים') + ' (Word).' + extra +
-        (ok ? ' בדוק/י את תיקיית ההורדות.' : ''), ok ? '' : 'error');
+        (ok ? ' בדוק/י את תיקיית ההורדות.' : '') +
+        (unavailable ? ' מסמך שאינו זמין כ-Word ניתן להוריד במצב PDF.' : ''), ok ? '' : 'error');
     }
   }
 
@@ -896,64 +983,6 @@
     if (typeof frac === 'number') { const f = m.querySelector('[data-cd-wm="fill"]'); if (f) f.style.width = Math.max(0, Math.min(100, Math.round(frac * 100))) + '%'; }
   }
   function hideWordMask() { const m = document.getElementById('cd-word-mask'); if (m && m.parentNode) m.parentNode.removeChild(m); }
-
-  // ── Word/DOC download via the site's native bulk endpoint (≤5 per batch) ──
-  async function startDocDownload(chosen) {
-    const dests = activeDestinations();
-    const caseId = adapter.readCaseId(document) || 'תיק';
-    const listLabel = (chosen[0] && chosen[0].docType) || 'מסמכים';
-    const nameStem = caseId + ' - ' + listLabel;
-    const BATCH = 5; // the site's native limit is 5 marked documents per download
-    const totalBatches = Math.ceil(chosen.length / BATCH);
-    let ok = 0, fail = 0, batchNum = 0;
-
-    // Optional remote destinations: upload the returned Word/ZIP files too.
-    const serverEp = dests.server && state.settings && state.settings.server && state.settings.server.endpoint;
-    let driveTargetId = '', driveReady = false;
-    if (dests.drive) {
-      setStatus('מכין תיקייה ב־Drive: ' + nameStem + '…');
-      const parent = (state.settings && state.settings.drive && state.settings.drive.folderId) || '';
-      const r = await sendToSW({ type: 'cd/driveEnsureFolder', parentId: parent, name: nameStem });
-      if (r && r.ok && r.id) { driveTargetId = r.id; driveReady = true; }
-    }
-    // When no destination is set (or only localZip), save the files straight to disk.
-    const saveToDisk = dests.localZip || (!serverEp && !driveReady);
-
-    for (let i = 0; i < chosen.length; i += BATCH) {
-      if (state.cancel) break;
-      batchNum++;
-      const batch = chosen.slice(i, i + BATCH);
-      setStatus('מוריד Word — אצווה ' + batchNum + '/' + totalBatches + ' (' + batch.length + ' מסמכים)…');
-      try {
-        const req = adapter.getNativeBulkRequest(batch, document);
-        const res = await fetch(req.url, { method: 'POST', credentials: 'include', headers: req.headers, body: req.body });
-        if (res.status === 401) { setStatus('⚠ פג תוקף הסשן. התחבר/י מחדש לנט המשפט ונסה/י שוב.', 'error'); return; }
-        const ct = (res.headers.get('content-type') || '').toLowerCase();
-        if (!res.ok || ct.indexOf('text/html') !== -1 || ct.indexOf('application/json') !== -1) {
-          // Not a file → the screen returned an error/redirect instead of Word.
-          fail += batch.length; continue;
-        }
-        const blob = await res.blob();
-        if (!blob || blob.size < 64) { fail += batch.length; continue; }
-        const fname = sanitize(filenameFromCD(res.headers.get('content-disposition'),
-          nameStem + (totalBatches > 1 ? '_' + batchNum : '') + guessExt(ct)), 120);
-        if (saveToDisk) saveBlob(blob, fname);
-        if (serverEp || driveReady) {
-          const bytes = await blob.arrayBuffer();
-          if (serverEp) await sendToSW({ type: 'cd/uploadServer', endpoint: serverEp, apiKey: (state.settings.server.apiKey || ''), filename: fname, bytes, mimeType: ct || 'application/octet-stream', meta: { caseId, kind: 'word', docType: listLabel } });
-          if (driveReady) await sendToSW({ type: 'cd/uploadDrive', folderId: driveTargetId, filename: fname, bytes, mimeType: ct || 'application/octet-stream' });
-        }
-        ok += batch.length;
-      } catch (e) {
-        fail += batch.length;
-      }
-    }
-
-    const extra = (driveReady ? ' · Drive ✓' : '') + (serverEp ? ' · שרת ✓' : '');
-    if (state.cancel) setStatus('בוטל. הורדו ' + ok + ' מסמכים כ-Word.' + extra);
-    else setStatus('✓ הסתיים — ' + ok + ' מסמכים כ-Word' + (fail ? ' · ' + fail + ' נכשלו' : '') + extra +
-      (totalBatches > 1 ? ' (' + totalBatches + ' קבצים, עד 5 מסמכים בכל אחד)' : ''), fail ? 'error' : '');
-  }
 
   function filenameFromCD(cd, fallback) {
     if (!cd) return fallback;

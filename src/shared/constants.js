@@ -36,8 +36,19 @@
     return seg ? '/' + seg : '/Ngcs.Web.Secured';
   }
 
+  // True on the no-auth public portal (www.court.gov.il/NGCS.Web.Site), false on
+  // the authenticated ones (securesso / secure → *.Web.Secured). Derived from the
+  // application root, so it follows the same rule as appRoot() rather than
+  // sniffing the hostname. Features that the public portal genuinely does not
+  // serve — the per-document viewer the PDF builder relies on — use this to
+  // tell the user where the feature IS available.
+  function isPublicPortal(href) {
+    return !/\.web\.secured$/i.test(appRoot(href));
+  }
+
   root.CD = root.CD || {};
   root.CD.appRoot = appRoot;
+  root.CD.isPublicPortal = isPublicPortal;
   root.CD.MSG = MSG;
   root.CD.DEFAULTS = DEFAULTS;
   root.CD.ALLOWED_HOST = ALLOWED_HOST;

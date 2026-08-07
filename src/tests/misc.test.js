@@ -94,6 +94,11 @@ function run(t) {
       env.window.CD.appRoot('https://securesso.court.gov.il/Ngcs.Web.Secured/PersonalAreaPage.aspx'), '/Ngcs.Web.Secured');
 
     // Regression guard: nothing may hard-code a secured path into a request.
+    // The old version of this guard exempted PersonalAreaPage.aspx outright,
+    // and that exemption is exactly what let header-sync.js keep sending
+    // www.court.gov.il/Ngcs.Web.Secured/PersonalAreaPage.aspx — a path that host
+    // answers with its WAF block page. A secured literal is now allowed ONLY on
+    // a line that picks it by testing the hostname (or derives it via appRoot).
     const fs = require('fs');
     const path = require('path');
     const { EXT_ROOT } = require('./helpers/env.js');
@@ -103,13 +108,79 @@ function run(t) {
       if (!f.endsWith('.js')) continue;
       fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach((line, i) => {
         if (/^\s*(\/\/|\*)/.test(line)) return;                        // comments describe them freely
-        if (/['"]\/[Nn][Gg][Cc][Ss]\.[Ww]eb\.[Ss]ecured\//.test(line) &&
-            !/HomePage\.aspx|PersonalAreaPage\.aspx/.test(line)) {     // login-only screens are secured by nature
-          offenders.push(f + ':' + (i + 1));
-        }
+        if (!/['"]\/[Nn][Gg][Cc][Ss]\.[Ww]eb\.[Ss]ecured\//.test(line)) return;
+        if (/location\.hostname|appRoot/.test(line)) return;            // chosen per portal — fine
+        offenders.push(f + ':' + (i + 1));
       });
     }
     t.eq('no hard-coded secured request paths', offenders.join(', '), '');
+  }
+
+  // The per-document viewer flow (btnDocument → GetAllImages) is not served on
+  // the public portal — verified A/B on one case: authenticated returned page
+  // images for every row, public returned no DocumentNumber at all. The run has
+  // to be able to say so, which means knowing which portal it is on.
+  t.section('portal kind: public vs authenticated');
+  {
+    const { loadScripts } = require('./helpers/env.js');
+    const cases = [
+      ['public portal is public', 'https://www.court.gov.il/NGCS.Web.Site/Decisions/DecisionList.aspx', true],
+      ['securesso is not public', 'https://securesso.court.gov.il/Ngcs.Web.Secured/Decisions/DecisionList.aspx', false],
+      ['secure (smart card) is not public', 'https://secure.court.gov.il/NGCS.Web.Secured/CaseFile/PresentDocument.aspx', false],
+    ];
+    for (const [label, url, expected] of cases) {
+      const env = loadScripts('<!DOCTYPE html><html><body></body></html>', { url, scripts: ['shared/constants.js'] });
+      t.eq(label, env.window.CD.isPublicPortal(), expected);
+    }
+  }
+
+  // `btnDownloadWordDocs2` is a hidden <a> that the decisions screen renders
+  // into EVERY response — verified on an untouched page AND on a 200 that did
+  // carry a DownloadDocuments URL. Treating its presence as "Net HaMishpat
+  // blocked this document" painted every failure (session, network, server
+  // error) as a court-side block, with no retry and nothing the user could act
+  // on. Net HaMishpat genuinely offers only a minority of decisions as Word
+  // (2 of 19 in the case this was diagnosed on), so that path must report
+  // "not available as Word" — never "blocked".
+  t.section('word: availability is not inferred from btnDownloadWordDocs2');
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const { EXT_ROOT } = require('./helpers/env.js');
+    const src = fs.readFileSync(path.join(EXT_ROOT, 'content', 'list-panel.js'), 'utf8');
+    const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+    t.eq('btnDownloadWordDocs2 is not tested in code', /btnDownloadWordDocs2/.test(code), false);
+    t.eq('no "blocked by Net HaMishpat" wording left', /חסומים ע"י נט המשפט/.test(code), false);
+    t.eq('reports unavailability instead', /אינם זמינים כ-Word/.test(code), true);
+  }
+
+  // The keep-alive selector required the literal "court.gov.il" in the asset
+  // attribute, but both portals reference assets root-relatively — so it matched
+  // NOTHING on either one and fell through to location.href. The "light ping"
+  // was therefore a GET of the ASP.NET application page itself, carrying a junk
+  // query parameter, fired at a bot-protected portal every 3 minutes.
+  t.section('keep-alive pings a static asset, never the application page');
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const { EXT_ROOT } = require('./helpers/env.js');
+    const src = fs.readFileSync(path.join(EXT_ROOT, 'content', 'list-panel.js'), 'utf8');
+    const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+    const fn = code.slice(code.indexOf('function keepAliveUrl'), code.indexOf('function startKeepAlive'));
+    t.eq('no location.href fallback', /location\.href/.test(fn), false);
+    t.eq('no _cdka cache-buster on the request', /_cdka/.test(code), false);
+    t.eq('restricted to static file extensions', /css\|js\|png/.test(fn), true);
+  }
+
+  // Dead code: this never had a caller, and duplicated the Word path badly
+  // enough to mislead anyone reading for the real one.
+  t.section('no dead startDocDownload path');
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const { EXT_ROOT } = require('./helpers/env.js');
+    const src = fs.readFileSync(path.join(EXT_ROOT, 'content', 'list-panel.js'), 'utf8');
+    t.eq('startDocDownload is gone', /startDocDownload/.test(src), false);
   }
 }
 

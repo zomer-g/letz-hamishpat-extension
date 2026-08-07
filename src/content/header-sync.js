@@ -487,9 +487,16 @@
     pump();
   }
 
-  // Domain-relative so it works on BOTH authenticated portals: securesso
-  // (national-ID login) and secure (smart-card login).
-  const PERSONAL_AREA_URL = location.origin + '/Ngcs.Web.Secured/PersonalAreaPage.aspx';
+  // Built from the page's OWN application root, not a hard-coded secured path.
+  // Hard-coding "/Ngcs.Web.Secured" sent this to
+  // www.court.gov.il/Ngcs.Web.Secured/... on the public portal — a path that
+  // host does not serve, which its WAF answers with "זוהתה פעילות בלתי מורשת"
+  // (verified live). That both fails and spends a flagged request. Same bug
+  // class as the viewer path fixed in 0.19.2; this was the instance left behind.
+  function personalAreaUrl() {
+    const root = (w.CD && w.CD.appRoot) ? w.CD.appRoot() : '/Ngcs.Web.Secured';
+    return location.origin + root + '/PersonalAreaPage.aspx';
+  }
 
   // Two user types, two data sources (confirmed by live inspection):
   //   • Lawyers ("אזור לעורכי דין") → ReportLawyerSittingsQueryView page via
@@ -547,7 +554,7 @@
       if (job.tries > 3) { failJob('לא הצלחתי לפתוח את האזור האישי. ניתן לפתוח ידנית וללחוץ שוב.'); return; }
       writeJob(job);
       setStatus('עובר לאזור האישי…');
-      location.href = PERSONAL_AREA_URL;
+      location.href = personalAreaUrl();
     } catch (e) {
       failJob((e && e.message) || String(e));
     }
