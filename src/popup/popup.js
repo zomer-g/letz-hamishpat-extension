@@ -278,16 +278,27 @@ if (typeof browser !== 'undefined' && browser !== globalThis.chrome) {
 
   function renderSelect() {
     const sel = el.select; if (!sel) return;
+    // Preserve what's on screen across a rebuild. Resetting to the SAVED id
+    // silently discarded an unsaved choice: pick a calendar (or create one),
+    // press "התחבר וטען יומנים" again, and it jumped back to the old target.
+    const onScreen = sel.value;
     sel.innerHTML = '';
     if (Array.isArray(calendars)) {
       if (!calendars.length) sel.appendChild(opt('', 'אין יומנים זמינים'));
       calendars.forEach((c) => sel.appendChild(opt(c.id, c.summary + (c.primary ? ' (ראשי)' : ''))));
-      sel.value = (cs && cs.calendarId) || (calendars[0] && calendars[0].id) || '';
     } else {
       if (cs && cs.calendarId) sel.appendChild(opt(cs.calendarId, cs.calendarName || cs.calendarId));
       sel.appendChild(opt('', 'לחץ "התחבר וטען יומנים"…'));
-      sel.value = (cs && cs.calendarId) || '';
     }
+    sel.value = pickValue(sel, onScreen);
+  }
+  // Keep the on-screen choice when it still exists, else the saved one, else
+  // the first calendar. Never silently move the user to a different calendar.
+  function pickValue(sel, onScreen) {
+    const has = (v) => !!v && Array.prototype.some.call(sel.options, (o) => o.value === v);
+    if (has(onScreen)) return onScreen;
+    if (has(cs && cs.calendarId)) return cs.calendarId;
+    return (sel.options[0] && sel.options[0].value) || '';
   }
   function renderConfig() {
     el.months.value = (cs && cs.monthsAhead) || 12;

@@ -10,7 +10,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 const { EXT_ROOT, readScript, makeChrome } = require('./helpers/env.js');
 
-function loadPopup(store) {
+function loadPopup(store, replies) {
   const html = fs.readFileSync(path.join(EXT_ROOT, 'popup', 'popup.html'), 'utf8');
   const dom = new JSDOM(html, { url: 'chrome-extension://test/popup/popup.html', runScripts: 'outside-only' });
   const w = dom.window;
@@ -21,7 +21,10 @@ function loadPopup(store) {
     sendMessage: (tabId, msg, cb) => { sent.push({ tabId, msg }); if (cb) cb({ ok: true }); },
     create: () => {},
   };
-  w.chrome.runtime.sendMessage = (_m, cb) => { if (cb) cb({ ok: true }); };
+  w.chrome.runtime.sendMessage = (m, cb) => {
+    const r = replies && replies[m && m.type];
+    if (cb) cb(r !== undefined ? r : { ok: true });
+  };
   ['shared/settings.js', 'shared/case-locator.js', 'shared/csv.js', 'popup/popup.js']
     .forEach((rel) => w.eval(readScript(rel)));
   return { w, d: w.document, sent, store: store || {} };
@@ -30,6 +33,36 @@ function loadPopup(store) {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 async function run(t) {
+  // Reloading the calendar list must not move the user's pick. It used to reset
+  // the <select> to the SAVED id, so choosing a calendar (or creating one) and
+  // then pressing "התחבר וטען יומנים" again silently jumped back to the old
+  // target — and a sync that looked configured went to the wrong calendar.
+  t.section('popup: reloading calendars keeps the calendar you picked');
+  {
+    const CALS = [
+      { id: 'old@group.calendar.google.com', summary: 'zomer- bugaton' },
+      { id: 'test@group.calendar.google.com', summary: 'בדיקת לץ המשפט' },
+    ];
+    const { w, d } = loadPopup(
+      { settings: { calendarSync: { calendarId: 'old@group.calendar.google.com', calendarName: 'zomer- bugaton' } } },
+      { 'cd/calConnect': { ok: true, email: 'x@y.z' }, 'cd/calListCalendars': { ok: true, calendars: CALS } });
+    await tick();
+
+    const sel = d.getElementById('cal-select');
+    d.getElementById('cal-connect').click();
+    await tick(); await tick();
+    t.eq('saved calendar is selected on first load', sel.value, 'old@group.calendar.google.com');
+
+    // The user picks the other calendar but has NOT pressed save yet.
+    sel.value = 'test@group.calendar.google.com';
+
+    // …then presses "התחבר וטען יומנים" again.
+    d.getElementById('cal-connect').click();
+    await tick(); await tick();
+    t.eq('the pick survives a reload', sel.value, 'test@group.calendar.google.com');
+    t.eq('list still complete', sel.options.length, 2);
+  }
+
   t.section('popup: the "תיקי מקור" tab exists and owns its own view');
   {
     const { d } = loadPopup();
