@@ -29,6 +29,8 @@
   // treats that as a delete and the event vanishes, which is the opposite of
   // "keep it, but show that it dropped".
   const DROPPED_PREFIX = 'בוטל: ';
+  // Group key for hearings whose case number could not be read.
+  const UNKEYED = '__cd_unkeyed__';
 
   // ── helpers ───────────────────────────────────────────────────────────────
   // "2026-09-06T08:30:00" | "2026-09-06" → sortable "2026-09-06T08:30"
@@ -127,13 +129,16 @@
 
     const note = (e) => { out.failed++; if (out.errors.length < 3) out.errors.push(String(e).slice(0, 120)); };
 
-    // Group by case. Hearings with no case number can't be scoped safely, so
-    // they are imported and never reconciled against anything.
+    // Group by case. Hearings whose case number couldn't be read still get
+    // reconciled — as ONE unkeyed group, matched against our own events in the
+    // same date window. Blind-importing them instead is how a caseId that came
+    // back empty (the hearings page put the case banner past the old 6000-char
+    // scan limit) turned every sync into "3 added" all over again. Reconciling
+    // without the case filter is still safe: it only ever touches events this
+    // extension created, inside the window being synced.
     const byCase = new Map();
-    const loose = [];
     for (const ev of events) {
-      const c = caseOf(ev);
-      if (!c) { loose.push(ev); continue; }
+      const c = caseOf(ev) || UNKEYED;
       if (!byCase.has(c)) byCase.set(c, []);
       byCase.get(c).push(ev);
     }
@@ -148,13 +153,14 @@
         const r = await send({
           type: 'cd/calListEvents',
           calendarId,
-          caseId,
+          caseId: caseId === UNKEYED ? '' : caseId,
           timeMin: dayShift(keys[0], -1),
           timeMax: dayShift(keys[keys.length - 1], +1),
         });
         if (r && r.ok && Array.isArray(r.events)) existing = r.events.filter(isOurs).filter((e) => {
+          if (caseId === UNKEYED) return true;   // no case to scope by; window + ownership only
           const c = caseOf(e);
-          return c ? c === caseId : true; // legacy events carry no case tag
+          return c ? c === caseId : true;        // legacy events carry no case tag
         });
         else if (r && !r.ok) note(r.error || 'list failed');
       } catch (e) { note((e && e.message) || e); }
@@ -181,12 +187,6 @@
       }
     }
 
-    for (const ev of loose) {
-      try {
-        const r = await send({ type: 'cd/calImportEvent', calendarId, event: ev });
-        if (r && r.ok) out.added++; else note((r && r.error) || 'import failed');
-      } catch (e) { note((e && e.message) || e); }
-    }
     return out;
   }
 

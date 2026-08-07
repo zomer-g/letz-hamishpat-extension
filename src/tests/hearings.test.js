@@ -68,6 +68,30 @@ function run(t) {
     t.eq('judge (בפני)', hs[0].judge, 'השופט א');
   }
 
+  // A single-case hearings page has no "מספר תיק" column — the case number is
+  // read from the page. That scan used to look at only the first 6000 chars of
+  // body text, and on the public portal the case banner sits at ~char 12,900,
+  // behind the accessibility widget's text and the header's full court and
+  // case-type option lists. It returned '' there, which cost the calendar sync
+  // its per-case scope and made every sync re-add the same hearings.
+  t.section('hearings: the case number is found behind a very long header');
+  {
+    const filler = 'שִׂים לֵב: בְּאֲתָר זֶה מֻפְעֶלֶת מַעֲרֶכֶת נָגִישׁ בִּקְלִיק. '.repeat(400);
+    const cols = [
+      { label: 'תאריך', cells: ['15/06/2026'] },
+      { label: 'שעת התחלה', cells: ['10:30'] },
+      { label: 'סוג דיון', cells: ['קדם משפט'] },
+    ];
+    const page = hearingsPage({ columns: cols, caseBanner: '30638-12-25' })
+      .replace('<body>', '<body><div>' + filler + '</div>');
+    t.ok('the filler really does push it past 6000 chars',
+      page.indexOf('30638-12-25') > 6000);
+    const { adapter, document } = loadHearings(page, HEARINGS_CASE_URL);
+    const hs = adapter.listAllHearings(document);
+    t.eq('one hearing', hs.length, 1);
+    t.eq('caseId still resolved', hs[0].caseId, '30638-12-25');
+  }
+
   t.section('hearings: csvRow shape matches CSV_HEADERS');
   {
     const { adapter } = loadHearings(hearingsPage({ columns: [{ label: 'שעת התחלה', cells: ['10:00'] }] }), HEARINGS_CASE_URL);

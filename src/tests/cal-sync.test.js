@@ -147,6 +147,34 @@ async function run(t) {
     t.eq('patched the legacy id', rec.of('cd/calPatchEvent')[0].eventId, 'old1');
   }
 
+  // The regression that made the live test still report "3 נוספו" twice: the
+  // hearings page put the case banner past readCaseIdFromHeader's old 6000-char
+  // scan limit, so caseId came back '' — and unkeyed events used to bypass
+  // reconciliation entirely and import every time. They must still reconcile,
+  // scoped by ownership + the date window instead of by case.
+  t.section('calendar: hearings with no case number still reconcile');
+  {
+    const e = env();
+    const CD = e.window.CD;
+    const noCase = (date, time) => ({ caseId: '', caseName: 'זומר נ׳ אדמסו', date, time, sittingType: 'דיון' });
+    const ev = CD.gcalEvent(noCase('06/09/2026', '08:30'));
+    t.eq('the case tag really is empty', ev.extendedProperties.private.cdCase, '');
+
+    // Second sync: the event we wrote the first time is already there.
+    const already = {
+      id: 'ev1',
+      iCalUID: 'abc@court-downloader',
+      summary: 'זומר נ׳ אדמסו',
+      start: { dateTime: '2026-09-06T08:30:00' },
+      end: { dateTime: '2026-09-06T09:30:00' },
+      extendedProperties: { private: { cdSource: 'letz-hamishpat', cdCase: '' } },
+    };
+    const rec = recorder([already]);
+    const r = await CD.calSync({ calendarId: 'cal1', events: [ev], send: rec.send });
+    t.eq('updated, NOT re-added', r.updated + ':' + r.added, '1:0');
+    t.ok('it did look the calendar up', rec.of('cd/calListEvents').length === 1);
+  }
+
   t.section('calendar: a foreign event is never touched');
   {
     const e = env();

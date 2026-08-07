@@ -404,10 +404,38 @@
     return { date: '', time: s };
   }
 
+  // The case number of a single-case hearings page. This used to read only the
+  // first 6000 characters of body text — and on the public portal the case
+  // banner sits at ~char 12,900, behind the accessibility widget's text and the
+  // header's full court/case-type option lists. It therefore returned '' there,
+  // which silently cost the calendar sync its per-case scope and made every
+  // sync re-add the same hearings. Walk the text nodes instead, skipping the
+  // extension's OWN injected UI (favorites and quick-locate render OTHER case
+  // numbers into the page, which would otherwise be picked up as this case).
   function readCaseIdFromHeader(doc) {
-    const t = ((doc.body && doc.body.textContent) || '').slice(0, 6000);
-    const m = t.match(/(\d{4,8}-\d{2}-\d{2})/);
-    return m ? m[1] : '';
+    const wd = doc || document;
+    const RE = /\b(\d{4,8}-\d{2}-\d{2})\b/;
+    function inExtUI(el) {
+      for (let n = el; n; n = n.parentElement) {
+        const id = n.id || '';
+        const cls = typeof n.className === 'string' ? n.className : ((n.className && n.className.baseVal) || '');
+        if (id === 'cd-float' || id.indexOf('cd-') === 0 || /(^|\s)cd-/.test(cls)) return true;
+      }
+      return false;
+    }
+    try {
+      const walk = wd.createTreeWalker(wd.body, NodeFilter.SHOW_TEXT, null);
+      let node;
+      while ((node = walk.nextNode())) {
+        if (inExtUI(node.parentElement)) continue;
+        const m = (node.textContent || '').match(RE);
+        if (m) return m[1];
+      }
+    } catch (e) {
+      const m = ((wd.body && wd.body.textContent) || '').match(RE);
+      if (m) return m[1];
+    }
+    return '';
   }
 
   function readCourtFromHeader(doc) {
