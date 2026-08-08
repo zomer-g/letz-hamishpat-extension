@@ -1,0 +1,33 @@
+{
+  "_comment": [
+    "Provenance of every vendored third-party library. MV3 forbids remote code, so",
+    "these ship inside the package; AMO therefore asks for their sources and for an",
+    "account of any change we made. This file is the single source of truth for that:",
+    "the Firefox build renders it into the reviewer notes, and tests/vendor.test.js",
+    "verifies the recorded hashes against the files on disk, so neither the libraries",
+    "nor this description can drift without the suite failing.",
+    "",
+    "sha256 values are over the file with LF line endings, so a Windows checkout that",
+    "materialises CRLF still verifies."
+  ],
+  "libraries": {
+    "jszip.min.js": {
+      "name": "JSZip",
+      "version": "3.10.1",
+      "upstream": "https://unpkg.com/jszip@3.10.1/dist/jszip.min.js",
+      "upstreamSha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e",
+      "localSha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e",
+      "modifications": []
+    },
+    "jspdf.umd.min.js": {
+      "name": "jsPDF",
+      "version": "2.5.1",
+      "upstream": "https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js",
+      "upstreamSha256": "98ccf17aa10c20bb1301762618fcc9b6ab3a4e7f26b6071d64d0b41154df3875",
+      "localSha256": "ae9c7345d59c0b12aceb67f6f933dc5bd17d419ae4e2417f3fafa9085d6e0b87",
+      "modifications": [
+        "Removed the one remote-code loader: the string \"https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js\" is replaced with an empty string. jsPDF injects that <script> only in its output('dataurlnewwindow') mode, which this extension never calls; loading remote code is forbidden by both MV3 and AMO policy. Verified to be the ONLY difference from upstream — every other byte is identical."
+      ]
+    }
+  }
+}

@@ -22,6 +22,7 @@ const MODULES = [
   './popup-bulk.test.js',
   './favorites.test.js',
   './misc.test.js',
+  './vendor.test.js',
   './dual-build.test.js',
 ];
 

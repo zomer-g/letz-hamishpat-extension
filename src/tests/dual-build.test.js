@@ -70,6 +70,30 @@ async function run(t) {
     t.eq('the package still has the right version', packedMf.version, chrome.version);
   }
 
+  // AMO asks for "Notes to Reviewer" on EVERY version, and — because the
+  // package carries minified third-party libraries — for build instructions
+  // that reproduce an exact copy. Generating them with the package is what
+  // stops the version, the file count and the vendor hashes from drifting away
+  // from what is actually submitted.
+  t.section('dual-build: the Firefox build emits reviewer notes');
+  {
+    const notesPath = path.join(ROOT, 'dist', 'AMO-reviewer-notes-v' + chrome.version + '.txt');
+    t.ok('notes were written next to the package', fs.existsSync(notesPath));
+    const notes = fs.readFileSync(notesPath, 'utf8');
+    t.ok('no unfilled placeholder', !/\{\{\w+\}\}/.test(notes));
+    t.ok('states this version', notes.indexOf('Version ' + chrome.version) !== -1);
+    t.ok('gives step-by-step build instructions', /npm run build:firefox/.test(notes));
+    t.ok('names the exact package it describes',
+      notes.indexOf('firefox-extension-v' + chrome.version + '.zip') !== -1);
+    t.ok('addresses the minified-source requirement', /MINIFIED CODE/.test(notes));
+    t.ok('declares the jsPDF patch rather than claiming none', /MODIFIED\s*:\s*YES/.test(notes));
+    t.ok('tells the reviewer how to try it without an Israeli login',
+      /www\.court\.gov\.il/.test(notes));
+    // The notes must never be packaged INTO the add-on — they are submission
+    // metadata, pasted into a form field.
+    t.ok('notes live in dist/, not in the package', notesPath.indexOf(path.join('dist', 'AMO')) !== -1);
+  }
+
   const ff = firefoxManifest();
   t.ok('the Firefox manifest has no key', !('key' in ff));
 

@@ -20,7 +20,14 @@ reproduces the exact add-on package that was uploaded.
 ```bash
 cd src
 npm run build:firefox     # → dist/firefox-extension-<version>.zip   (the AMO package)
+                          #   dist/AMO-reviewer-notes-<version>.txt  (paste into AMO)
+                          #   dist/firefox/                          (unpacked, for about:debugging)
 ```
+
+The reviewer notes are generated, not hand-written: the version, the package
+file count and the vendored libraries' checksums are read from the build itself,
+so they cannot drift from the package being submitted. Template:
+`docs/firefox-amo/REVIEWER_NOTES_TEMPLATE.md`.
 
 For the Chrome package, or both at once:
 
@@ -53,7 +60,11 @@ manifest and
 - adds `browser_specific_settings.gecko` — the permanent add-on id,
   `strict_min_version: "140.0"`, and
   `data_collection_permissions: { "required": ["none"] }`,
-- removes the Chrome-only `oauth2` block.
+- removes the Chrome-only `oauth2` block,
+- removes `key`. That field is kept in source so a locally loaded *unpacked*
+  copy receives the published extension id during development (without it
+  Chrome derives an id from the install path and Google's OAuth client rejects
+  it). It is meaningless on Firefox and is stripped from BOTH store packages.
 
 Nothing else is transformed. `src/tests/dual-build.test.js` pins this contract,
 asserting that the two manifests differ only in those keys and that every other

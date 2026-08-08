@@ -1,3 +1,10 @@
+> **⚠️ Superseded — background reading only.**
+> The notes actually submitted to AMO are GENERATED per version by
+> `npm run build:firefox` into `src/dist/AMO-reviewer-notes-<version>.txt`,
+> from `docs/firefox-amo/REVIEWER_NOTES_TEMPLATE.md`. Edit the TEMPLATE, not
+> this file — this one is a longer architectural write-up kept for context and
+> its version header is not maintained.
+
 # AMO Reviewer Notes — Net HaMishpat Bulk Document Downloader (Firefox)
 
 _Extension version 0.17.15. Firefox port of the existing Chrome extension._

@@ -156,6 +156,75 @@ function writeUnpacked(dir, files) {
   }
 }
 
+// AMO asks for "Notes to Reviewer" on EVERY version, and — because the package
+// contains minified third-party libraries — for build instructions that
+// reproduce an exact copy. Generating it here rather than keeping a hand-edited
+// document means the version, the file count and the vendor checksums can never
+// drift from the package actually being submitted.
+const REVIEWER_TEMPLATE = path.join(ROOT, '..', 'docs', 'firefox-amo', 'REVIEWER_NOTES_TEMPLATE.md');
+
+// Rendered from vendor/VENDOR.json — the same record tests/vendor.test.js
+// verifies against the files on disk. Reviewers get provenance and, crucially,
+// an honest account of the one library we patched, rather than a claim someone
+// wrote once and forgot to update.
+function vendorTable() {
+  const meta = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'VENDOR.json'), 'utf8')).libraries;
+  const dir = path.join(ROOT, 'vendor');
+  const rows = [];
+  for (const name of fs.readdirSync(dir).sort()) {
+    if (!name.endsWith('.js')) continue;
+    const lib = meta[name];
+    if (!lib) throw new Error('vendor/' + name + ' has no VENDOR.json entry — document it before shipping.');
+    const size = fs.statSync(path.join(dir, name)).size;
+    let row =
+      '  vendor/' + name + '  (' + lib.name + ' ' + lib.version + ', ' + size + ' bytes)\n' +
+      '      upstream        : ' + lib.upstream + '\n' +
+      '      sha256 upstream : ' + lib.upstreamSha256 + '\n' +
+      '      sha256 as shipped: ' + lib.localSha256 + '\n';
+    if (!lib.modifications.length) {
+      row += '      MODIFIED        : no — identical to upstream, byte for byte.';
+    } else {
+      row += '      MODIFIED        : YES —\n' +
+        lib.modifications.map((m) => wrap(m, 10)).join('\n');
+    }
+    rows.push(row);
+  }
+  return rows.join('\n\n');
+}
+
+// Wrap a long sentence to keep the notes readable in AMO's plain-text field.
+function wrap(text, indent) {
+  const pad = ' '.repeat(indent);
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    if ((line + ' ' + w).trim().length > 74) { lines.push(pad + line.trim()); line = w; }
+    else line += ' ' + w;
+  }
+  if (line.trim()) lines.push(pad + line.trim());
+  return lines.join('\n');
+}
+
+function writeReviewerNotes(version, fileCount) {
+  if (!fs.existsSync(REVIEWER_TEMPLATE)) {
+    // Loud, not silent: shipping a Firefox version with no reviewer notes is a
+    // submission that will come back.
+    throw new Error('Reviewer-notes template missing: ' + REVIEWER_TEMPLATE);
+  }
+  const out = fs.readFileSync(REVIEWER_TEMPLATE, 'utf8')
+    .replace(/\{\{VERSION\}\}/g, version)
+    .replace(/\{\{FILE_COUNT\}\}/g, String(fileCount))
+    .replace(/\{\{VENDOR_TABLE\}\}/g, vendorTable());
+  if (/\{\{\w+\}\}/.test(out)) {
+    throw new Error('Reviewer notes still contain an unfilled placeholder: ' +
+      (out.match(/\{\{\w+\}\}/) || [])[0]);
+  }
+  const dest = path.join(DIST, `AMO-reviewer-notes-v${version}.txt`);
+  fs.writeFileSync(dest, out, 'utf8');
+  return dest;
+}
+
 async function main() {
   const version = manifestVersion();
   ensureDist();
@@ -170,6 +239,8 @@ async function main() {
     const unpacked = path.join(DIST, 'firefox');
     writeUnpacked(unpacked, files);
     console.log(`Also wrote ${path.relative(ROOT, unpacked)}/ — load it via about:debugging → Load Temporary Add-on.`);
+    const notes = writeReviewerNotes(version, files.length);
+    console.log(`Wrote ${path.relative(ROOT, notes)} — paste into AMO's "Notes to Reviewer".`);
   }
 }
 
