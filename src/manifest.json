@@ -3,7 +3,7 @@
   "name": "__MSG_extension_name__",
   "description": "__MSG_extension_description__",
   "default_locale": "he",
-  "version": "0.19.3",
+  "version": "0.19.4",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4I9vfOupGkcDF4+Jvo+788hZ1/MT5lhbOv1SCx4kr0Xx3j4NKveNjeSCCOJJqE09qvMYxHoOFkw7sL0Boz7VWocVwyfAC0pU9pjNrUlqf4BZZTIiqPIFu9iREJOH065+A6aPRKfUvUx6yvh0TYYOLLnisgw2JJ+r93YMQDVMQskfMNHrMe1Kb4pQWpTggPCRSzxQCUeBgykrH4eaUZ2pWkhwVFCkuFdv1Tv7oXnqwL0Cx9MnPr/+diGTzn2mBnwXbMOUlAIwqaD8xv1DMjwupWmbRpK4kWlopMj6bJiFQTUn4xxxP7Eeu+SldL9UdxgABZw02WWZHX5PlrutOcB6JwIDAQAB",
   "permissions": [
     "activeTab",
