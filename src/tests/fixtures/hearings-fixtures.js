@@ -17,14 +17,23 @@ function hearingsPage(opts) {
   const rowCount = columns.length ? (columns[0].cells || []).length : 0;
   const hiddenStyle = opts.visible === false ? ' style="display:none"' : '';
 
+  // opts.colIds  → emit col-id on headers AND cells (what the real AG-Grid does)
+  // opts.cellOrder → render the row's cells in this column order, which is how
+  //   AG-Grid actually behaves: DOM cell order need not match header order.
+  const colId = (c, i) => (opts.colIds ? ' col-id="' + esc(c.colId || ('c' + i)) + '"' : '');
   const headerHtml = columns
-    .map((c) => '<div role="columnheader" class="ag-header-cell">' + esc(c.label) + '</div>')
+    .map((c, i) => '<div role="columnheader" class="ag-header-cell"' + colId(c, i) + '>' + esc(c.label) + '</div>')
     .join('');
 
+  const order = opts.cellOrder || columns.map((_c, i) => i);
   let rowsHtml = '';
   for (let r = 0; r < rowCount; r++) {
-    const cells = columns
-      .map((c) => '<div role="gridcell">' + esc((c.cells || [])[r] == null ? '' : (c.cells || [])[r]) + '</div>')
+    const cells = order
+      .map((ci) => {
+        const c = columns[ci];
+        const v = (c.cells || [])[r];
+        return '<div role="gridcell"' + colId(c, ci) + '>' + esc(v == null ? '' : v) + '</div>';
+      })
       .join('');
     rowsHtml += '<div role="row" row-index="' + r + '">' + cells + '</div>';
   }

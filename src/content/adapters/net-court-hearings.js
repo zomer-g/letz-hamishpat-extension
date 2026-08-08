@@ -252,10 +252,22 @@
     const headerCells = Array.from(grid.querySelectorAll('.ag-header-cell'));
     const colCount = headerCells.length;
     if (!colCount) return null;
-    const colRoles = new Array(colCount).fill(null);
+    // Map BOTH by col-id and by position. AG-Grid renders each cell with the
+    // same col-id as its header, but the DOM ORDER of the cells does not have
+    // to match the header order — it reorders as columns virtualize/scroll.
+    // Pairing header[i] with cell[i] therefore silently transposes the row:
+    // observed live on מועדי דיון, where the date column read "דיון" and the
+    // real date landed under "סטטוס דיון". Every hearing then had an unparsable
+    // date, so the calendar sync reported "אין דיונים עם תאריך תקין" — and,
+    // worse, a transposition that still parses would sync wrong times.
+    const colRoles = new Array(colCount).fill(null);   // positional fallback
+    const roleByColId = Object.create(null);
     headerCells.forEach((cell, idx) => {
       const role = headerRole(cell.textContent);
-      if (role) colRoles[idx] = role;
+      if (!role) return;
+      colRoles[idx] = role;
+      const colId = cell.getAttribute('col-id');
+      if (colId) roleByColId[colId] = role;
     });
     if (!colRoles.some(Boolean)) return null;
 
@@ -265,7 +277,10 @@
       const cells = Array.from(rowEl.querySelectorAll('[role="gridcell"]'));
       const raw = {};
       cells.forEach((cell, idx) => {
-        const role = colRoles[idx];
+        const colId = cell.getAttribute('col-id');
+        // col-id when the cell carries one (authoritative); position only as a
+        // fallback for renderings that don't.
+        const role = (colId && roleByColId[colId]) || (colId ? null : colRoles[idx]);
         if (role) raw[role] = (cell.textContent || '').trim();
       });
       if (Object.keys(raw).length) rows.push(raw);

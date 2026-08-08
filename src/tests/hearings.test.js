@@ -92,6 +92,34 @@ function run(t) {
     t.eq('caseId still resolved', hs[0].caseId, '30638-12-25');
   }
 
+  // AG-Grid gives each cell the same col-id as its header, but the DOM ORDER of
+  // the cells need not match the header order — it changes as columns
+  // virtualize. Pairing header[i] with cell[i] silently transposes the row.
+  // Observed live on מועדי דיון: the date column read "דיון" and the real date
+  // sat under "סטטוס דיון", so every hearing had an unparsable date and the
+  // calendar sync refused the lot with "אין דיונים עם תאריך תקין".
+  t.section('hearings: cells are matched by col-id, not by position');
+  {
+    const cols = [
+      { label: 'תאריך', colId: 'MeetingDate', cells: ['06/09/2026'] },
+      { label: 'שעת התחלה', colId: 'StartTime', cells: ['08:30'] },
+      { label: 'שעת סיום', colId: 'FinishTime', cells: ['09:00'] },
+      { label: 'סוג דיון', colId: 'SittingTypeName', cells: ['דיון'] },
+      { label: 'סטטוס דיון', colId: 'SittingStatus', cells: ['נקבע'] },
+      { label: 'גורם מטפל', colId: 'UserList', cells: ['לימור ביבי'] },
+    ];
+    // The exact shuffle the live page produced: type/status/handler first, the
+    // date and times last.
+    const page = hearingsPage({ columns: cols, colIds: true, cellOrder: [3, 4, 5, 0, 1, 2] });
+    const { adapter, document } = loadHearings(page, HEARINGS_CASE_URL);
+    const hs = adapter.listAllHearings(document);
+    t.eq('one hearing', hs.length, 1);
+    t.eq('date not transposed', hs[0].date, '06/09/2026');
+    t.eq('start time not transposed', hs[0].time, '08:30');
+    t.eq('end time not transposed', hs[0].endTime, '09:00');
+    t.eq('sitting type', hs[0].sittingType, 'דיון');
+  }
+
   t.section('hearings: csvRow shape matches CSV_HEADERS');
   {
     const { adapter } = loadHearings(hearingsPage({ columns: [{ label: 'שעת התחלה', cells: ['10:00'] }] }), HEARINGS_CASE_URL);
